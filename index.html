@@ -306,6 +306,14 @@
          no hay panel lateral: la pantalla principal muestra solo subir
          imagen, con el diseño al centro. */
       body.no-tool .panel-col{ display:none; }
+      /* ---------- Perillas seguras al deslizar ----------
+         Deslizar la pantalla ya NO mueve las perillas: sobre un deslizador
+         el gesto vertical lo toma la página (sigue el scroll) y el
+         deslizador solo responde al arrastre horizontal deliberado. */
+      input[type="range"]{ touch-action:pan-y; }
+      /* Al elegir una herramienta en el celular la vista baja sola al
+         panel: el margen deja el título visible bajo la barra fija. */
+      .panel{ scroll-margin-top:64px; }
       @media (max-width:1023.98px){
         body.rail-open .rail{ border-bottom:1px solid var(--line); }
       }
@@ -360,6 +368,10 @@
         <button class="tool-btn" data-tool="suavizar">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="8.6" stroke-dasharray="3.2 3.4"/></svg>
           Suavizar bordes
+        </button>
+        <button class="tool-btn" data-tool="borrador">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 15.5 14 6a2.1 2.1 0 0 1 3 0l2.5 2.5a2.1 2.1 0 0 1 0 3L13 18H8a2 2 0 0 1-1.4-.6l-2.1-1.9Z"/><path d="M3 21h18"/></svg>
+          Borrador
         </button>
         <button class="tool-btn" data-tool="bordes">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.5" stroke-dasharray="2.6 2.2"/></svg>
@@ -530,6 +542,23 @@
             <button class="btn primary" id="btnSuavizar">Aplicar suavizado</button>
           </div>
           
+        </section>
+
+        <section class="panel" data-panel="borrador">
+          <h2>Borrador</h2>
+          <p class="desc">Borra a mano lo que sobre: pasa el dedo o el mouse sobre la zona y queda transparente, lista para DTF. Si te pasas, cambia a «Restaurar» y pinta de vuelta lo que borraste de más.</p>
+          <div class="field">
+            <label>Modo</label>
+            <div class="seg" id="eraMode">
+              <button class="active" data-m="erase">Borrar</button>
+              <button data-m="restore">Restaurar</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Tamaño del borrador <span class="val" id="eraSizeVal">70 px</span></label>
+            <input type="range" id="eraSize" min="8" max="300" value="70" />
+          </div>
+          <p class="hint">El borrado se aplica al momento, trazo a trazo, y cada trazo se puede deshacer con el botón <b>Deshacer</b> de arriba. «Restaurar» devuelve la imagen tal como entró a esta herramienta. Con dos dedos sigues haciendo zoom.</p>
         </section>
 
         <section class="panel" data-panel="bordes">
@@ -1496,7 +1525,7 @@
       canvasBox.hidden = inSheet || inShirt;
       sheetBox.hidden = !inSheet;
       shirtBoxEl.hidden = !inShirt;
-      canvasBox.classList.toggle('pickable', ['fondo','calar','extraer','fullprint','borrarobj'].includes(currentTool));
+      canvasBox.classList.toggle('pickable', ['fondo','calar','extraer','fullprint','borrarobj','borrador'].includes(currentTool));
       $('#stageHead').hidden = false;
       $('#btnUndo').hidden = false; $('#btnReset').hidden = false; $('#btnDownload').hidden = false;
       $('#btnUndo').disabled = true; $('#btnReset').disabled = false; $('#btnDownload').disabled = false;
@@ -1626,6 +1655,22 @@
         document.body.classList.remove('rail-open');
       }
     });
+    /* ---------- «atrás» ya no reinicia el proyecto ----------
+       El botón o gesto de atrás del navegador sacaba de la app y el
+       proyecto se perdía. La app deja una marca en el historial: al dar
+       atrás no se sale, la marca se vuelve a poner y se avisa que el
+       proyecto sigue aquí. Y con un diseño cargado, cerrar o recargar
+       la página pide confirmación primero. */
+    (function(){
+      try{ history.pushState({ hdtf: 1 }, ''); }catch(e){}
+      window.addEventListener('popstate', ()=>{
+        try{ history.pushState({ hdtf: 1 }, ''); }catch(e){}
+        toast(hasImage ? 'Tu proyecto sigue aquí, no se perdió nada' : 'Sigues en Herramientas DTF');
+      });
+      window.addEventListener('beforeunload', e => {
+        if (hasImage){ e.preventDefault(); e.returnValue = ''; }
+      });
+    })();
     ['dragover','dragleave','drop'].forEach(ev => stageScroll.addEventListener(ev, e => {
       e.preventDefault(); stageScroll.classList.toggle('dragover', ev === 'dragover');
       if (ev === 'drop' && e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
@@ -1802,6 +1847,14 @@
         czCache = null;
         if (hasImage && typeof czUpdateDetect === 'function') czUpdateDetect();
       }
+      else if (name === 'borrador'){
+        setRangeStd('#eraSize', '#eraSizeVal', 70, v => v + ' px');
+        eraMode = 'erase'; syncSeg('#eraMode', 'erase');
+        /* «Restaurar» pinta desde la imagen tal como entró a la
+           herramienta: se guarda una copia al entrar. */
+        eraSrc = hasImage ? cloneCanvas(work) : null;
+        ovx.clearRect(0, 0, ov.width, ov.height);
+      }
       else if (name === 'borrarobj'){
         setRangeStd('#boBrush', '#boBrushVal', 60, v => v + ' px');
         if (typeof borrarClearAll === 'function') borrarClearAll();
@@ -1859,11 +1912,21 @@
       $('#stageHead').hidden = false;
       $$('#rail .tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === name));
       $$('.panel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
+      /* En el celular el panel queda debajo del lienzo y había que
+         buscar las perillas deslizando: al elegir una herramienta la
+         vista baja sola hasta sus controles. */
+      if (window.matchMedia && window.matchMedia('(max-width: 1023.98px)').matches){
+        const actPanel = document.querySelector('.panel.active');
+        if (actPanel){
+          const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          setTimeout(()=> actPanel.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' }), 60);
+        }
+      }
       const isSheet = name === 'pliego', isShirt = name === 'playera';
       sheetBox.hidden = !isSheet; shirtBoxEl.hidden = !isShirt;
       canvasBox.hidden = isSheet || isShirt || !hasImage;
       $('#emptyState').hidden = hasImage || isSheet || isShirt;
-      canvasBox.classList.toggle('pickable', ['fondo','calar','extraer','fullprint','borrarobj'].includes(name) && hasImage);
+      canvasBox.classList.toggle('pickable', ['fondo','calar','extraer','fullprint','borrarobj','borrador'].includes(name) && hasImage);
       if (hasImage && !isSheet && !isShirt){ toolBase = cloneCanvas(work); computeFit(); applyZoom(); }
       /* Al entrar NO se dispara ninguna vista previa: la imagen se ve tal
          cual y las perillas quedan en estándar (resetToolControls). El
@@ -1963,11 +2026,19 @@
         gesture.down = null;
         return;
       }
+      /* En Borrador, un dedo BORRA en vez de arrastrar la vista; con
+         dos dedos se sigue haciendo zoom y el trazo se corta. */
+      if (currentTool === 'borrador' && hasImage && gesture.pts.size === 1 && typeof eraStrokeStart === 'function'){
+        eraStrokeStart(e.clientX, e.clientY);
+        gesture.down = null;
+        return;
+      }
       if (gesture.pts.size === 2){
         const ab = Array.from(gesture.pts.values());
         gesture.pinch = { d: Math.max(1, Math.hypot(ab[0][0]-ab[1][0], ab[0][1]-ab[1][1])), s: viewScale };
         gesture.down = null; gesture.dead = true;
         if (typeof borrarStrokeEnd === 'function') borrarStrokeEnd();
+        if (typeof eraStrokeEnd === 'function') eraStrokeEnd();
       } else if (gesture.pts.size === 1){
         gesture.down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t: Date.now(), panned: false };
       }
@@ -1977,6 +2048,10 @@
       gesture.pts.set(e.pointerId, [e.clientX, e.clientY]);
       if (typeof borrarPainting !== 'undefined' && borrarPainting && gesture.pts.size === 1){
         borrarStrokeMove(e.clientX, e.clientY);
+        return;
+      }
+      if (typeof eraPainting !== 'undefined' && eraPainting && gesture.pts.size === 1){
+        eraStrokeMove(e.clientX, e.clientY);
         return;
       }
       if (gesture.pinch && gesture.pts.size === 2){
@@ -1994,11 +2069,13 @@
     function gestureEnd(e){
       const wasPinch = !!gesture.pinch;
       const wasPainting = (typeof borrarPainting !== 'undefined' && borrarPainting);
+      const wasErasing = (typeof eraPainting !== 'undefined' && eraPainting);
       if (wasPainting && typeof borrarStrokeEnd === 'function') borrarStrokeEnd();
+      if (wasErasing && typeof eraStrokeEnd === 'function') eraStrokeEnd();
       gesture.pts.delete(e.pointerId);
       if (gesture.pts.size < 2) gesture.pinch = null;
       if (gesture.pts.size === 0){
-        if (!wasPainting && !wasPinch && gesture.down && !gesture.down.panned && !gesture.dead && Date.now() - gesture.down.t < 600)
+        if (!wasPainting && !wasErasing && !wasPinch && gesture.down && !gesture.down.panned && !gesture.dead && Date.now() - gesture.down.t < 600)
           handleTap(gesture.down.x, gesture.down.y);
         gesture.down = null; gesture.dead = false;
       }
@@ -4651,6 +4728,116 @@
         borrarClearAll();
         toast('Objeto borrado y hueco rellenado');
       });
+    });
+
+    /* ---------- BORRADOR MANUAL ----------
+       Borra a mano sobre el lienzo: cada trazo pinta en una máscara y
+       se compone SOLO en el tramo recorrido (no en todo el lienzo),
+       así responde al momento aun con imágenes grandes.
+       - Modo Borrar: la máscara se aplica con destination-out y la
+         zona queda transparente.
+       - Modo Restaurar: se pinta de vuelta desde eraSrc, la copia de
+         la imagen tal como entró a la herramienta.
+       El trazo se aplica directo (sin vista previa): al empezar se
+       guarda UN paso de Deshacer por trazo completo, y al soltar, lo
+       borrado pasa a ser la nueva base de la herramienta. */
+    var eraPainting = false;
+    let eraMode = 'erase', eraSrc = null, eraLast = null, eraPushed = false;
+    const eraMask = document.createElement('canvas');
+    const eraMaskCtx = eraMask.getContext('2d');
+    const eraScratch = document.createElement('canvas');
+    function eraPoint(cx, cy){
+      const r = work.getBoundingClientRect();
+      return [ (cx - r.left) * work.width / Math.max(1, r.width), (cy - r.top) * work.height / Math.max(1, r.height) ];
+    }
+    function eraSyncMask(){
+      if (eraMask.width !== work.width || eraMask.height !== work.height){
+        eraMask.width = work.width; eraMask.height = work.height;
+      }
+    }
+    function eraShowCursor(cx, cy){
+      if (!hasImage) return;
+      const p = eraPoint(cx, cy);
+      const b = +$('#eraSize').value;
+      const r = work.getBoundingClientRect();
+      ovx.clearRect(0, 0, ov.width, ov.height);
+      ovx.save();
+      ovx.strokeStyle = 'rgba(255,90,31,0.9)';
+      ovx.lineWidth = Math.max(1.5, 1.5 * work.width / Math.max(1, r.width));
+      ovx.beginPath(); ovx.arc(p[0], p[1], b / 2, 0, Math.PI * 2); ovx.stroke();
+      ovx.restore();
+    }
+    function eraApplyRegion(x0, y0, x1, y1){
+      const w = x1 - x0, h = y1 - y0;
+      if (w <= 0 || h <= 0) return;
+      if (eraMode === 'restore' && eraSrc){
+        eraScratch.width = w; eraScratch.height = h;
+        const tx = eraScratch.getContext('2d');
+        tx.clearRect(0, 0, w, h);
+        tx.drawImage(eraSrc, x0, y0, w, h, 0, 0, w, h);
+        tx.globalCompositeOperation = 'destination-in';
+        tx.drawImage(eraMask, x0, y0, w, h, 0, 0, w, h);
+        tx.globalCompositeOperation = 'source-over';
+        wx.drawImage(eraScratch, x0, y0);
+      } else {
+        wx.save();
+        wx.globalCompositeOperation = 'destination-out';
+        wx.drawImage(eraMask, x0, y0, w, h, x0, y0, w, h);
+        wx.restore();
+      }
+    }
+    function eraPaint(p0, p1){
+      const b = +$('#eraSize').value;
+      eraMaskCtx.save();
+      eraMaskCtx.strokeStyle = '#ffffff'; eraMaskCtx.fillStyle = '#ffffff';
+      eraMaskCtx.lineWidth = b; eraMaskCtx.lineCap = 'round'; eraMaskCtx.lineJoin = 'round';
+      eraMaskCtx.beginPath(); eraMaskCtx.moveTo(p0[0], p0[1]); eraMaskCtx.lineTo(p1[0], p1[1]); eraMaskCtx.stroke();
+      eraMaskCtx.beginPath(); eraMaskCtx.arc(p1[0], p1[1], b / 2, 0, Math.PI * 2); eraMaskCtx.fill();
+      eraMaskCtx.restore();
+      /* El paso de Deshacer se guarda ANTES de tocar el lienzo y una
+         sola vez por trazo: Deshacer quita el trazo entero. */
+      if (!eraPushed){ pushUndoCanvas(work); eraPushed = true; }
+      const r = b / 2 + 3;
+      const x0 = Math.max(0, Math.floor(Math.min(p0[0], p1[0]) - r));
+      const y0 = Math.max(0, Math.floor(Math.min(p0[1], p1[1]) - r));
+      const x1 = Math.min(work.width, Math.ceil(Math.max(p0[0], p1[0]) + r));
+      const y1 = Math.min(work.height, Math.ceil(Math.max(p0[1], p1[1]) + r));
+      eraApplyRegion(x0, y0, x1, y1);
+      ovx.clearRect(0, 0, ov.width, ov.height);
+    }
+    function eraStrokeStart(cx, cy){
+      if (!hasImage) return;
+      eraSyncMask();
+      if (!eraSrc || eraSrc.width !== work.width || eraSrc.height !== work.height)
+        eraSrc = cloneCanvas(toolBase || work);
+      eraMaskCtx.clearRect(0, 0, eraMask.width, eraMask.height);
+      eraPainting = true; eraPushed = false;
+      const p = eraPoint(cx, cy); eraLast = p;
+      eraPaint(p, p);
+    }
+    function eraStrokeMove(cx, cy){
+      if (!eraPainting || !eraLast) return;
+      const p = eraPoint(cx, cy);
+      eraPaint(eraLast, p);
+      eraLast = p;
+    }
+    function eraStrokeEnd(){
+      if (!eraPainting) return;
+      eraPainting = false; eraLast = null;
+      /* Lo borrado queda fijo: pasa a ser la base de la herramienta,
+         para que cambiar de herramienta no lo revierta. */
+      toolBase = cloneCanvas(work);
+    }
+    rangeWire('#eraSize', '#eraSizeVal', v => v + ' px');
+    segWire('#eraMode', m => { eraMode = m; });
+    /* Círculo guía con el tamaño del borrador al mover el mouse sobre
+       la imagen (en táctil el trazo mismo se ve al borrar). */
+    canvasBox.addEventListener('pointermove', e => {
+      if (currentTool !== 'borrador' || !hasImage || eraPainting || e.pointerType === 'touch') return;
+      eraShowCursor(e.clientX, e.clientY);
+    });
+    canvasBox.addEventListener('pointerleave', ()=>{
+      if (currentTool === 'borrador') ovx.clearRect(0, 0, ov.width, ov.height);
     });
     </script>
 
