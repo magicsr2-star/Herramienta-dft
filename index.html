@@ -324,6 +324,21 @@
          la imagen del diseño, centrada y al mayor tamaño que quepa
          en la hoja, sin fondo (transparente, lista para DTF). */
       #printArea{ display:none; }
+      /* Menú del botón Imprimir: elegir normal o espejo antes de imprimir. */
+      .print-wrap{ position:relative; display:inline-flex; }
+      .print-menu{
+        position:absolute; top:calc(100% + 6px); right:0; z-index:40; min-width:230px;
+        background:var(--panel); border:1px solid var(--line); border-radius:12px;
+        box-shadow:var(--shadow); padding:.4rem; display:flex; flex-direction:column; gap:.3rem;
+      }
+      .print-menu button{
+        display:flex; flex-direction:column; align-items:flex-start; gap:.05rem; text-align:left;
+        border:1px solid transparent; background:transparent; color:var(--ink);
+        border-radius:9px; padding:.5rem .6rem; font-weight:700; font-size:.9rem; min-height:2.6rem;
+      }
+      .print-menu button small{ font-weight:500; color:var(--muted); font-size:.78rem; }
+      .print-menu button:active{ background:var(--panel2); }
+      @media (hover:hover){ .print-menu button:hover{ background:var(--panel2); border-color:var(--line); } }
       @media print{
         @page{ margin:10mm; }
         body{ background:#fff !important; }
@@ -333,6 +348,9 @@
           width:100%; height:100vh;
         }
         #printArea img{ max-width:100%; max-height:100vh; object-fit:contain; }
+        /* Modo espejo: la imagen sale volteada horizontalmente, como
+           se necesita para sublimación y transfer. */
+        #printArea.mirror img{ transform:scaleX(-1); }
       }
     </style>
   </head>
@@ -354,10 +372,16 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 4-4m-4 4-4-4"/><path d="M4 20h16"/></svg>
         Descargar PNG
       </button>
-      <button class="btn" id="btnPrint" disabled hidden>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
-        Imprimir
-      </button>
+      <span class="print-wrap">
+        <button class="btn" id="btnPrint" disabled hidden aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
+          Imprimir
+        </button>
+        <div class="print-menu" id="printMenu" hidden role="menu" aria-label="Opciones de impresión">
+          <button type="button" id="btnPrintNormal" role="menuitem">Imprimir normal<small>Tal como se ve el diseño</small></button>
+          <button type="button" id="btnPrintMirror" role="menuitem">Imprimir en espejo<small>Volteado, para sublimación y transfer</small></button>
+        </div>
+      </span>
     </div>
 
     <div class="layout">
@@ -1775,23 +1799,46 @@
       if (download(await canvasPng(work, 300), 'diseno-300dpi.png'))
         toast('PNG descargado a 300 DPI');
     });
-    /* Imprimir: se vuelca el diseño actual (el lienzo de trabajo, a
+    /* Imprimir: el botón abre un menú con dos opciones, normal o en
+       espejo. Se vuelca el diseño actual (el lienzo de trabajo, a
        300 DPI) en el área de impresión y se abre el diálogo del sistema.
        El CSS @media print oculta toda la app, así que en papel sale
-       solo la imagen. Se espera a que la imagen cargue antes de
-       imprimir para que no salga la hoja en blanco. */
-    $('#btnPrint').addEventListener('click', async ()=>{
+       solo la imagen; con la clase .mirror sale volteada horizontalmente
+       (para sublimación y transfer). Se espera a que la imagen cargue
+       antes de imprimir para que no salga la hoja en blanco. El modo
+       espejo solo afecta a la hoja impresa: el diseño en pantalla y el
+       archivo descargado quedan como están. */
+    const printMenu = $('#printMenu'), btnPrintEl = $('#btnPrint');
+    function closePrintMenu(){
+      printMenu.hidden = true;
+      btnPrintEl.setAttribute('aria-expanded', 'false');
+    }
+    btnPrintEl.addEventListener('click', ()=>{
+      if (!requireImage()) return;
+      const open = printMenu.hidden;
+      printMenu.hidden = !open;
+      btnPrintEl.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', (e)=>{
+      if (!printMenu.hidden && !e.target.closest('.print-wrap')) closePrintMenu();
+    });
+    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') closePrintMenu(); });
+    async function doPrint(mirror){
+      closePrintMenu();
       if (!requireImage()) return;
       const blob = await canvasPng(work, 300);
       if (!blob){ toast('El navegador no pudo preparar la imagen para imprimir.'); return; }
-      const img = $('#printImg');
+      const area = $('#printArea'), img = $('#printImg');
+      area.classList.toggle('mirror', !!mirror);
       const url = URL.createObjectURL(blob);
       const cleanup = ()=> setTimeout(()=> URL.revokeObjectURL(url), 1000);
       window.addEventListener('afterprint', cleanup, { once:true });
       img.onload = ()=>{ try{ window.print(); }catch(e){ toast('Este navegador no dejó abrir la impresión.'); } };
       img.onerror = ()=>{ cleanup(); toast('No se pudo preparar la imagen para imprimir.'); };
       img.src = url;
-    });
+    }
+    $('#btnPrintNormal').addEventListener('click', ()=> doPrint(false));
+    $('#btnPrintMirror').addEventListener('click', ()=> doPrint(true));
 
     /* ---------- cambio de herramienta ---------- */
     let calarPreviewActive = false, semiPreviewActive = false, inkPreviewActive = false;

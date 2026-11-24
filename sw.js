@@ -1,7 +1,7 @@
 /* Herramientas DTF — Service Worker
    Precarga la app para que abra sin internet. Al publicar una versión
    nueva, sube el número de CACHE_VERSION para que se refresque todo. */
-const CACHE_VERSION = 'hdtf-v40';
+const CACHE_VERSION = 'hdtf-v41';
 const CACHE_NAME = 'herramientas-dtf-' + CACHE_VERSION;
 
 const PRECACHE = [
