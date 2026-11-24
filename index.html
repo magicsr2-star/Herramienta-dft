@@ -317,6 +317,23 @@
       @media (max-width:1023.98px){
         body.rail-open .rail{ border-bottom:1px solid var(--line); }
       }
+
+      /* ---------- Imprimir ----------
+         El área de impresión solo existe en papel: en pantalla está
+         oculta y al imprimir se oculta TODA la app y sale únicamente
+         la imagen del diseño, centrada y al mayor tamaño que quepa
+         en la hoja, sin fondo (transparente, lista para DTF). */
+      #printArea{ display:none; }
+      @media print{
+        @page{ margin:10mm; }
+        body{ background:#fff !important; }
+        body > *:not(#printArea){ display:none !important; }
+        #printArea{
+          display:flex !important; align-items:center; justify-content:center;
+          width:100%; height:100vh;
+        }
+        #printArea img{ max-width:100%; max-height:100vh; object-fit:contain; }
+      }
     </style>
   </head>
   <body>
@@ -336,6 +353,10 @@
       <button class="btn primary" id="btnDownload" disabled hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 4-4m-4 4-4-4"/><path d="M4 20h16"/></svg>
         Descargar PNG
+      </button>
+      <button class="btn" id="btnPrint" disabled hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
+        Imprimir
       </button>
     </div>
 
@@ -990,30 +1011,31 @@
         </section>
 
         <section class="panel" data-panel="colorear">
-          <h2>Colorear blanco y negro</h2>
-          <p class="desc">Da color a una foto o diseño en blanco y negro según la luz de cada zona: sombras, medios tonos y luces reciben su propio color.</p>
+          <h2>Colorear blanco y negro · IA</h2>
+          <p class="desc">IA de verdad (DeOldify): una red neuronal que entiende la foto —piel, cielo, plantas, ropa— y predice el color de cada cosa. No es un tinte ni un filtro: cada zona recibe el color que la IA reconoce en ella.</p>
           <div class="hint" id="czDetect" style="margin:0 0 .8rem">Sube una imagen para detectar si viene en blanco y negro.</div>
-          <div class="field">
-            <label>Paleta de color</label>
-            <div class="seg" id="czPalette" style="flex-wrap:wrap">
-              <button class="active" data-m="realista" style="flex:1 1 30%">Realista</button>
-              <button data-m="atardecer" style="flex:1 1 30%">Atardecer</button>
-              <button data-m="oceano" style="flex:1 1 30%">Océano</button>
-              <button data-m="vintage" style="flex:1 1 30%">Vintage</button>
-              <button data-m="pop" style="flex:1 1 30%">Pop</button>
-            </div>
+          <p class="hint"><b>Colorear con IA:</b> la red corre <b>en tu propio celular</b>, sin servidor y sin enviar tu foto a ningún lado. La primera vez descarga el modelo de DeOldify (~61 MB) y usa el mismo motor de IA de las demás herramientas de la app; todo queda guardado en el navegador y después colorea <b>sin gastar datos y sin conexión</b>. La IA mira la foto a 256 px para decidir los colores y ese color se fusiona con la luz y el detalle de tu foto original a tamaño completo, así el resultado no pierde nitidez ni sombreado.</p>
+          <div class="field" id="czProgWrap" hidden>
+            <label>Descargando el modelo de IA <span class="val" id="czProgVal">0%</span></label>
+            <div class="ia-prog"><div id="czProgBar"></div></div>
           </div>
-          <div class="field">
-            <label>Intensidad del color <span class="val" id="czIntVal">80</span></label>
-            <input type="range" id="czInt" min="0" max="100" value="80" />
-          </div>
-          <div class="field">
-            <label>Fuerza del color <span class="val" id="czSatVal">50</span></label>
-            <input type="range" id="czSat" min="0" max="100" value="50" />
-          </div>
-          <p class="hint">El sombreado original se conserva tal cual: solo cambia el color, nunca la luz. En fotos de personas la paleta Realista da tonos cálidos tipo foto coloreada a mano.</p>
+          <p class="hint" id="czStatus">Pulsa «Colorear con IA» y espera a que la red pinte tu foto. La primera vez tarda más por la descarga del modelo; después es cosa de segundos.</p>
           <div class="btnrow">
-            <button class="btn primary" id="btnColorear">Aplicar color</button>
+            <button class="btn primary" id="btnColorearIA">Colorear con IA</button>
+          </div>
+          <div id="czAdjust" hidden>
+            <div class="field">
+              <label>Intensidad del color <span class="val" id="czIntVal">100</span></label>
+              <input type="range" id="czInt" min="0" max="100" value="100" />
+            </div>
+            <div class="field">
+              <label>Vivacidad <span class="val" id="czVivVal">100%</span></label>
+              <input type="range" id="czViv" min="0" max="200" value="100" />
+            </div>
+            <p class="hint">Estos dos ajustes se aplican sobre el color que ya calculó la IA, sin volver a correr la red: «Intensidad» mezcla entre tu foto original y la coloreada, y «Vivacidad» sube o baja la fuerza de los colores.</p>
+            <div class="btnrow">
+              <button class="btn primary" id="btnColorear">Aplicar color</button>
+            </div>
           </div>
         </section>
 
@@ -1369,6 +1391,7 @@
 
     <footer></footer>
 
+    <div id="printArea" aria-hidden="true"><img id="printImg" alt="Diseño para imprimir" /></div>
     <div class="toast" id="toast"></div>
     <div class="busy" id="busy" hidden role="status" aria-live="polite">
       <div class="busy-card"><div class="spinner" aria-hidden="true"></div><span id="busyMsg">Procesando…</span></div>
@@ -1516,6 +1539,9 @@
       /* La máscara de la IA es de la imagen anterior: se suelta para
          no gastar memoria ni recortar la imagen nueva con ella. */
       iaState.mask = null; iaState.base = null;
+      /* El color calculado por DeOldify también es de la imagen
+         anterior: se suelta para no pintar la nueva con él. */
+      czState.fused = null; czState.base = null; czState.baseData = null; czState.fusedData = null;
       fondoPreviewActive = false; suavPreviewActive = false; bordesPreviewActive = false; calarPreviewActive = false; semiPreviewActive = false; inkPreviewActive = false; colorPreviewActive = false; autoiaPreviewActive = false; restaurarPreviewActive = false; colorearPreviewActive = false;
       hasImage = true;
       $('#emptyState').hidden = true;
@@ -1527,8 +1553,8 @@
       shirtBoxEl.hidden = !inShirt;
       canvasBox.classList.toggle('pickable', ['fondo','calar','extraer','fullprint','borrarobj','borrador'].includes(currentTool));
       $('#stageHead').hidden = false;
-      $('#btnUndo').hidden = false; $('#btnReset').hidden = false; $('#btnDownload').hidden = false;
-      $('#btnUndo').disabled = true; $('#btnReset').disabled = false; $('#btnDownload').disabled = false;
+      $('#btnUndo').hidden = false; $('#btnReset').hidden = false; $('#btnDownload').hidden = false; $('#btnPrint').hidden = false;
+      $('#btnUndo').disabled = true; $('#btnReset').disabled = false; $('#btnDownload').disabled = false; $('#btnPrint').disabled = false;
       corners = []; drawMarkers(); updateCornerUI();
       fitZoom(); updateDims(); refreshMejorar();
       /* Si el diseño se sube ESTANDO en el Atelier (botón principal
@@ -1749,6 +1775,23 @@
       if (download(await canvasPng(work, 300), 'diseno-300dpi.png'))
         toast('PNG descargado a 300 DPI');
     });
+    /* Imprimir: se vuelca el diseño actual (el lienzo de trabajo, a
+       300 DPI) en el área de impresión y se abre el diálogo del sistema.
+       El CSS @media print oculta toda la app, así que en papel sale
+       solo la imagen. Se espera a que la imagen cargue antes de
+       imprimir para que no salga la hoja en blanco. */
+    $('#btnPrint').addEventListener('click', async ()=>{
+      if (!requireImage()) return;
+      const blob = await canvasPng(work, 300);
+      if (!blob){ toast('El navegador no pudo preparar la imagen para imprimir.'); return; }
+      const img = $('#printImg');
+      const url = URL.createObjectURL(blob);
+      const cleanup = ()=> setTimeout(()=> URL.revokeObjectURL(url), 1000);
+      window.addEventListener('afterprint', cleanup, { once:true });
+      img.onload = ()=>{ try{ window.print(); }catch(e){ toast('Este navegador no dejó abrir la impresión.'); } };
+      img.onerror = ()=>{ cleanup(); toast('No se pudo preparar la imagen para imprimir.'); };
+      img.src = url;
+    });
 
     /* ---------- cambio de herramienta ---------- */
     let calarPreviewActive = false, semiPreviewActive = false, inkPreviewActive = false;
@@ -1841,9 +1884,14 @@
         setRangeStd('#rsSharp', '#rsSharpVal', 65);
       }
       else if (name === 'colorear'){
-        czPalette = 'realista'; syncSeg('#czPalette', 'realista');
-        setRangeStd('#czInt', '#czIntVal', 80);
-        setRangeStd('#czSat', '#czSatVal', 50);
+        setRangeStd('#czInt', '#czIntVal', 100);
+        setRangeStd('#czViv', '#czVivVal', 100, v => v + '%');
+        if (typeof czSetProgress === 'function') czSetProgress(null);
+        if (typeof syncCzAdjust === 'function') syncCzAdjust();
+        if (typeof czSetStatus === 'function') czSetStatus(
+          (typeof czState !== 'undefined' && czState.fused && czState.base === toolBase)
+            ? 'La IA ya coloreó esta imagen: ajusta la intensidad o la vivacidad y pulsa «Aplicar color», o vuelve a pulsar «Colorear con IA» para recalcular.'
+            : 'Pulsa «Colorear con IA» y espera a que la red pinte tu foto. La primera vez tarda más por la descarga del modelo; después es cosa de segundos.');
         czCache = null;
         if (hasImage && typeof czUpdateDetect === 'function') czUpdateDetect();
       }
@@ -4304,8 +4352,10 @@
          del negro/blanco reales por percentiles + viveza protegida.
        - Quitar ruido y enfocar: bilateral preservador de bordes + USM
          con umbral (el mismo motor probado de Súper resolución).
-       - Colorear B/N: mapa de color por luminancia con paletas por
-         zonas (sombras/medios/luces), conservando el sombreado exacto.
+       - Colorear B/N: red neuronal real (DeOldify cuantizada, ONNX
+         Runtime Web) que predice el color de cada zona de la foto;
+         el color se fusiona con la luminancia original a tamaño
+         completo para no perder detalle ni sombreado.
        - Borrar objeto: relleno por difusión piramidal (inpainting):
          el hueco se reconstruye desde lo que lo rodea, por escalas.
        Las tres primeras siguen el patrón de la casa: vista previa en
@@ -4462,35 +4512,53 @@
       });
     });
 
-    /* ---------- COLOREAR BLANCO Y NEGRO ---------- */
-    let czPalette = 'realista';
+    /* ---------- COLOREAR BLANCO Y NEGRO · IA DeOldify (en el navegador) ----------
+       IA de verdad, no un tinte: una red neuronal (DeOldify, la misma
+       que usa MyHeritage In Color en su versión abierta) corre DENTRO
+       del navegador con ONNX Runtime Web (WASM), igual que Quitar
+       fondo IA y Súper resolución IA. No hay API ni servidor: la foto
+       nunca sale del aparato. El modelo cuantizado (~61 MB) se
+       descarga una sola vez desde GitHub y el navegador lo deja en su
+       caché; el motor (ORT) es el mismo que ya descargan las otras
+       IA de la app, así que no se baja dos veces. Todo se carga TARDE
+       y solo si el usuario pulsa «Colorear con IA», para no gastar
+       datos de quien nunca lo usa.
+       Contrato del modelo (verificado ejecutándolo): entrada «input»
+       [1,3,256,256] float con los valores RGB CRUDOS 0–255 en orden
+       NCHW, sin normalizar; salida «out» [1,3,256,256] float ya en
+       rango 0–255. Se usan inputNames/outputNames de la sesión, no
+       nombres escritos a mano.
+       La red decide el color mirando la foto a 256×256; ese mapa de
+       color se amplía al tamaño completo y se FUSIONA con la foto
+       original reescalando cada píxel para que su luminancia sea
+       exactamente la original: la IA aporta el color (tono y
+       saturación) y la foto conserva su luz, su sombra y su detalle
+       bit a bit. La transparencia original también se conserva.
+       «Intensidad» y «Vivacidad» son ajustes posteriores sobre ese
+       resultado ya calculado (no vuelven a correr la red): la vista
+       previa sale de czState y «Aplicar color» lo deja fijo, con el
+       patrón de la casa. Cualquier fallo — sin internet en la primera
+       descarga, navegador sin WASM, falta de memoria, o una salida
+       sin color — avisa claro y deja la imagen intacta. */
+    const CZ_MODEL_URL = 'https://raw.githubusercontent.com/linmingren/openmodels/main/models/deoldify/deoldify.quant.onnx';
+    const CZ_MODEL_BYTES = 64020138;
+    let czSession = null, czModelBuf = null;
+    let czState = { running: false, base: null, fused: null, baseData: null, fusedData: null };
     let czCache = null;
-    const CZ_PALS = {
-      realista:  [[0,[36,42,64]], [.32,[92,80,74]], [.55,[176,130,100]], [.78,[216,180,142]], [1,[247,239,222]]],
-      atardecer: [[0,[27,58,75]], [.38,[18,128,145]], [.68,[232,73,15]], [1,[247,232,195]]],
-      oceano:    [[0,[10,32,54]], [.45,[28,96,138]], [.75,[64,164,178]], [1,[214,240,240]]],
-      vintage:   [[0,[43,36,30]], [.45,[128,96,66]], [.72,[176,142,102]], [1,[240,224,188]]],
-      pop:       [[0,[70,20,90]], [.42,[216,38,92]], [.7,[255,138,42]], [1,[255,242,170]]]
-    };
-    function czLut(){
-      const stops = CZ_PALS[czPalette] || CZ_PALS.realista;
-      const lut = new Uint8ClampedArray(256 * 3);
-      for (let v = 0; v < 256; v++){
-        const t = v / 255;
-        let s0 = stops[0], s1 = stops[stops.length - 1];
-        for (let k = 0; k < stops.length - 1; k++)
-          if (t >= stops[k][0] && t <= stops[k+1][0]){ s0 = stops[k]; s1 = stops[k+1]; break; }
-        const f = (t - s0[0]) / Math.max(0.0001, s1[0] - s0[0]);
-        const col = [0,1,2].map(c => s0[1][c] + (s1[1][c] - s0[1][c]) * Math.min(1, Math.max(0, f)));
-        /* El color de la paleta se reescala para que SU luminancia sea
-           exactamente la del píxel: el sombreado original (cada luz y
-           cada sombra de la foto) queda intacto, solo cambia el color. */
-        const cl = 0.2126 * col[0] + 0.7152 * col[1] + 0.0722 * col[2];
-        const sc = cl > 4 ? v / cl : 0;
-        lut[v*3] = Math.min(255, col[0] * sc); lut[v*3+1] = Math.min(255, col[1] * sc); lut[v*3+2] = Math.min(255, col[2] * sc);
-      }
-      return lut;
+    function czSetStatus(txt){ const el = $('#czStatus'); if (el) el.textContent = txt; }
+    function czSetProgress(pct){
+      const wrap = $('#czProgWrap'), bar = $('#czProgBar'), val = $('#czProgVal');
+      if (!wrap || !bar || !val) return;
+      if (pct === null){ wrap.hidden = true; return; }
+      wrap.hidden = false; bar.style.width = pct + '%'; val.textContent = pct + '%';
     }
+    function syncCzAdjust(){
+      const el = $('#czAdjust'); if (!el) return;
+      el.hidden = !(czState.fused && czState.base === toolBase);
+    }
+    /* Detección de blanco y negro: promedio de saturación muestreado.
+       Solo informa en el panel; la IA trabaja igual si la foto ya
+       trae algo de color (p. ej. un sepia viejo). */
     function czDetect(){
       if (czCache && czCache.base === toolBase) return czCache;
       const w = toolBase.width, h = toolBase.height;
@@ -4509,44 +4577,202 @@
       const el = $('#czDetect'); if (!el || !hasImage || !toolBase) return;
       const det = czDetect();
       el.textContent = det.meanSat < 14
-        ? 'Se detectó una imagen en blanco y negro: lista para colorear.'
-        : 'Esta imagen ya trae color: el resultado será un teñido con la paleta elegida, aplicado sobre su luz.';
+        ? 'Se detectó una imagen en blanco y negro: lista para colorear con IA.'
+        : 'Esta imagen ya trae color: la IA lo va a reinterpretar por completo con los colores que reconozca en la foto.';
     }
-    function czCompute(){
+    async function czFetchModel(){
+      if (czModelBuf) return czModelBuf;
+      const resp = await fetch(CZ_MODEL_URL);
+      if (!resp.ok) throw new Error('modelo ' + resp.status);
+      const total = +resp.headers.get('Content-Length') || CZ_MODEL_BYTES;
+      if (!resp.body || !resp.body.getReader){ czModelBuf = await resp.arrayBuffer(); return czModelBuf; }
+      const reader = resp.body.getReader();
+      const chunks = []; let got = 0;
+      for (;;){
+        const part = await reader.read();
+        if (part.done) break;
+        chunks.push(part.value); got += part.value.length;
+        const pct = Math.min(99, Math.round(got / total * 100));
+        czSetProgress(pct);
+        if (!$('#busy').hidden) $('#busyMsg').textContent = 'Descargando el modelo de IA… ' + pct + '%';
+      }
+      const buf = new Uint8Array(got); let off = 0;
+      for (const c of chunks){ buf.set(c, off); off += c.length; }
+      czModelBuf = buf.buffer;
+      czSetProgress(100);
+      return czModelBuf;
+    }
+    async function czEnsureSession(){
+      if (czSession) return czSession;
+      czSetStatus('Cargando el motor de IA…');
+      await iaLoadOrt();
+      window.ort.env.wasm.wasmPaths = IA_ORT_BASE;
+      window.ort.env.wasm.numThreads = 1;
+      czSetStatus('Descargando el modelo de DeOldify (una sola vez, ~61 MB)…');
+      const modelBuf = await czFetchModel();
+      czSetProgress(null);
+      $('#busyMsg').textContent = 'Creando la sesión de IA…';
+      czSession = await window.ort.InferenceSession.create(modelBuf, { executionProviders: ['wasm'] });
+      return czSession;
+    }
+    /* Corre la red sobre el lienzo dado y devuelve { canvas, meanSat }
+       con el color predicho a 256×256. La entrada va sobre fondo
+       blanco (una foto B/N es opaca; en un diseño ya recortado el
+       blanco es el fondo neutro de siempre) y con los valores crudos
+       0–255 que el modelo espera, en orden NCHW. */
+    async function czRunInference(srcCanvas){
+      const S = 256, N = S * S;
+      const small = document.createElement('canvas'); small.width = S; small.height = S;
+      const sx = small.getContext('2d', { willReadFrequently: true });
+      sx.fillStyle = '#ffffff'; sx.fillRect(0, 0, S, S);
+      sx.imageSmoothingEnabled = true; sx.imageSmoothingQuality = 'high';
+      sx.drawImage(srcCanvas, 0, 0, S, S);
+      const sd = sx.getImageData(0, 0, S, S).data;
+      const input = new Float32Array(3 * N);
+      for (let i = 0; i < N; i++){
+        input[i] = sd[i*4]; input[N + i] = sd[i*4+1]; input[2 * N + i] = sd[i*4+2];
+      }
+      const tensor = new window.ort.Tensor('float32', input, [1, 3, S, S]);
+      const feeds = {}; feeds[czSession.inputNames[0]] = tensor;
+      const results = await czSession.run(feeds);
+      const out = results[czSession.outputNames[0]].data;
+      const oc = document.createElement('canvas'); oc.width = S; oc.height = S;
+      const ox = oc.getContext('2d');
+      const img = ox.createImageData(S, S), od = img.data;
+      let satSum = 0;
+      for (let i = 0; i < N; i++){
+        const r = out[i], g = out[N + i], b = out[2 * N + i];
+        od[i*4]   = Math.max(0, Math.min(255, Math.round(r)));
+        od[i*4+1] = Math.max(0, Math.min(255, Math.round(g)));
+        od[i*4+2] = Math.max(0, Math.min(255, Math.round(b)));
+        od[i*4+3] = 255;
+        satSum += Math.max(r, g, b) - Math.min(r, g, b);
+      }
+      ox.putImageData(img, 0, 0);
+      return { canvas: oc, meanSat: satSum / N };
+    }
+    /* Fusiona el color de la IA (256×256) con la foto original a
+       tamaño completo: cada píxel conserva SU luminancia exacta y
+       toma el tono de la IA; la transparencia queda como estaba. */
+    function czFuse(origCanvas, colorSmall){
+      const W = origCanvas.width, H = origCanvas.height;
+      const big = document.createElement('canvas'); big.width = W; big.height = H;
+      const bx = big.getContext('2d', { willReadFrequently: true });
+      bx.imageSmoothingEnabled = true; bx.imageSmoothingQuality = 'high';
+      bx.drawImage(colorSmall, 0, 0, W, H);
+      const ai = bx.getImageData(0, 0, W, H).data;
+      const src = origCanvas.getContext('2d').getImageData(0, 0, W, H), sd = src.data;
+      const out = document.createElement('canvas'); out.width = W; out.height = H;
+      const ox = out.getContext('2d');
+      const img = ox.createImageData(W, H), od = img.data;
+      for (let i = 0; i < sd.length; i += 4){
+        od[i+3] = sd[i+3];
+        if (sd[i+3] < 8){ continue; }
+        const lOrig = 0.2126 * sd[i] + 0.7152 * sd[i+1] + 0.0722 * sd[i+2];
+        const lAi = 0.2126 * ai[i] + 0.7152 * ai[i+1] + 0.0722 * ai[i+2];
+        if (lAi > 12){
+          const sc = lOrig / lAi;
+          od[i]   = Math.min(255, ai[i]   * sc);
+          od[i+1] = Math.min(255, ai[i+1] * sc);
+          od[i+2] = Math.min(255, ai[i+2] * sc);
+        } else {
+          /* Zona casi negra en la predicción: reescalar dispararía el
+             ruido; se toma el color de la IA tal cual. */
+          od[i] = ai[i]; od[i+1] = ai[i+1]; od[i+2] = ai[i+2];
+        }
+      }
+      ox.putImageData(img, 0, 0);
+      return out;
+    }
+    /* Resultado final = resultado de la IA con los dos ajustes del
+       panel: Intensidad mezcla con la foto original y Vivacidad
+       escala la saturación alrededor del gris de cada píxel. */
+    function czComputeFinal(){
       const w = toolBase.width, h = toolBase.height;
-      const src = toolBase.getContext('2d').getImageData(0, 0, w, h), d = src.data;
+      const bd = czState.baseData, fd = czState.fusedData;
       const out = wx.createImageData(w, h), o = out.data;
-      const lut = czLut();
       const inten = +$('#czInt').value / 100;
-      const f = 0.55 + (+$('#czSat').value / 100) * 0.9;
-      for (let i = 0; i < d.length; i += 4){
-        o[i+3] = d[i+3];
-        if (d[i+3] < 8) continue;
-        const L = Math.round(0.2126 * d[i] + 0.7152 * d[i+1] + 0.0722 * d[i+2]);
-        let r = L + (lut[L*3] - L) * f, g = L + (lut[L*3+1] - L) * f, b = L + (lut[L*3+2] - L) * f;
-        o[i]   = d[i]   + (r - d[i])   * inten;
-        o[i+1] = d[i+1] + (g - d[i+1]) * inten;
-        o[i+2] = d[i+2] + (b - d[i+2]) * inten;
+      const viv = +$('#czViv').value / 100;
+      for (let i = 0; i < bd.length; i += 4){
+        o[i+3] = bd[i+3];
+        if (bd[i+3] < 8) continue;
+        let r = bd[i]   + (fd[i]   - bd[i])   * inten;
+        let g = bd[i+1] + (fd[i+1] - bd[i+1]) * inten;
+        let b = bd[i+2] + (fd[i+2] - bd[i+2]) * inten;
+        if (viv !== 1){
+          const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          r = gray + (r - gray) * viv; g = gray + (g - gray) * viv; b = gray + (b - gray) * viv;
+        }
+        o[i]   = Math.max(0, Math.min(255, r));
+        o[i+1] = Math.max(0, Math.min(255, g));
+        o[i+2] = Math.max(0, Math.min(255, b));
       }
       return out;
     }
     let czTimer = null;
     function scheduleCzPreview(){
       if (!hasImage || currentTool !== 'colorear' || !toolBase) return;
+      if (!czState.fused || czState.base !== toolBase) return;
       clearTimeout(czTimer);
-      czTimer = setTimeout(()=>{ if (currentTool !== 'colorear' || !toolBase) return; wx.putImageData(czCompute(), 0, 0); colorearPreviewActive = true; }, 70);
+      czTimer = setTimeout(()=>{ if (currentTool !== 'colorear' || !toolBase || czState.base !== toolBase) return; wx.putImageData(czComputeFinal(), 0, 0); colorearPreviewActive = true; }, 70);
     }
-    rangeWire('#czInt', '#czIntVal'); rangeWire('#czSat', '#czSatVal');
-    ['#czInt','#czSat'].forEach(id => $(id).addEventListener('input', scheduleCzPreview));
-    segWire('#czPalette', m => { czPalette = m; scheduleCzPreview(); });
+    rangeWire('#czInt', '#czIntVal'); rangeWire('#czViv', '#czVivVal', v => v + '%');
+    ['#czInt','#czViv'].forEach(id => $(id).addEventListener('input', scheduleCzPreview));
+    $('#btnColorearIA').addEventListener('click', async ()=>{
+      if (!requireImage()) return;
+      if (czState.running) return;
+      /* Mismo resultado ya calculado para esta misma imagen base:
+         no se vuelve a correr la red, solo se repone la vista previa. */
+      if (czState.fused && czState.base === toolBase){ scheduleCzPreview(); toast('La IA ya había coloreado esta imagen: ajusta y aplica'); return; }
+      czState.running = true;
+      const baseAtStart = toolBase;
+      showBusy('Preparando la IA…');
+      try{
+        await czEnsureSession();
+        $('#busyMsg').textContent = 'La IA está coloreando tu foto…';
+        czSetStatus('La IA está coloreando tu foto…');
+        await new Promise(r => setTimeout(r, 30));
+        const res = await czRunInference(baseAtStart);
+        if (toolBase !== baseAtStart) return;
+        /* Guarda de seguridad: si la salida salió prácticamente sin
+           color, la red no pudo con esta imagen; no se toca nada. */
+        if (res.meanSat < 2){
+          czSetStatus('La IA no logró sacar color de esta imagen. Tu foto quedó intacta; prueba con otra foto en blanco y negro.');
+          toast('La IA no logró colorear esta imagen; tu foto quedó intacta');
+          return;
+        }
+        const fused = czFuse(baseAtStart, res.canvas);
+        czState.fused = fused; czState.base = baseAtStart;
+        czState.baseData = baseAtStart.getContext('2d').getImageData(0, 0, baseAtStart.width, baseAtStart.height).data;
+        czState.fusedData = fused.getContext('2d').getImageData(0, 0, fused.width, fused.height).data;
+        syncCzAdjust();
+        wx.putImageData(czComputeFinal(), 0, 0);
+        colorearPreviewActive = true;
+        czSetStatus('Listo: la IA coloreó tu foto. Ajusta la intensidad o la vivacidad si quieres y pulsa «Aplicar color» para dejarlo fijo.');
+        toast('Foto coloreada con IA: revisa y pulsa «Aplicar color»');
+      }catch(e){
+        czSetProgress(null);
+        czSetStatus('No se pudo completar la colorización. La primera vez hace falta internet para descargar el modelo (~61 MB); si ya lo tenías, puede ser falta de memoria con una imagen muy grande. Tu foto quedó intacta.');
+        toast('La IA no pudo colorear esta imagen; tu foto quedó intacta');
+      }finally{
+        czState.running = false;
+        hideBusy();
+      }
+    });
     $('#btnColorear').addEventListener('click', ()=>{
       if (!requireImage()) return;
+      if (!czState.fused || czState.base !== toolBase){ toast('Primero pulsa «Colorear con IA»'); return; }
       pushUndoCanvas(toolBase);
-      wx.putImageData(czCompute(), 0, 0);
+      wx.putImageData(czComputeFinal(), 0, 0);
       toolBase = cloneCanvas(work);
       colorearPreviewActive = false;
       czCache = null;
-      toast('Imagen coloreada');
+      /* El resultado aplicado ya es la nueva base: el color calculado
+         era de la base anterior y no debe reusarse sobre esta. */
+      czState.fused = null; czState.base = null; czState.baseData = null; czState.fusedData = null;
+      syncCzAdjust();
+      czSetStatus('Color aplicado. Si quieres recolorear desde la foto original, usa Deshacer y vuelve a pulsar «Colorear con IA».');
+      toast('Imagen coloreada con IA');
     });
 
     /* ---------- BORRAR OBJETO (relleno / inpainting) ---------- */
