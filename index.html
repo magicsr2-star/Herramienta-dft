@@ -596,20 +596,27 @@
         }
         .tool-btn svg{ width:21px; height:21px; }
 
-        /* Panel de opciones: hoja que sube desde abajo */
+        /* Panel de opciones: hoja que sube desde abajo. Su altura inicial
+           deja ver buena parte del lienzo; desde la barra superior se
+           arrastra para agrandarla o bajarla, y con el botón ⌄ se achica
+           a una franja (solo la barra) para ver el efecto en vivo a
+           pantalla casi completa mientras se mueven los controles. */
         .panel-col{
           position:fixed; left:0; right:0; top:auto; z-index:55;
           bottom:calc(70px + env(safe-area-inset-bottom, 0px));
-          max-height:72dvh; border-top:1px solid var(--line); border-left:0;
+          max-height:58dvh; border-top:1px solid var(--line); border-left:0;
           border-radius:16px 16px 0 0; box-shadow:0 -12px 32px rgba(0,0,0,.55);
-          transition:transform .3s ease;
+          transition:transform .3s ease, height .25s ease;
         }
+        body.sheet-mini .panel-col{ height:64px; max-height:64px; overflow:hidden; }
+        body.sheet-drag .panel-col{ transition:transform .3s ease; }
         body.sheet-closed .panel-col{ transform:translateY(calc(100% + 90px)); pointer-events:none; }
         .sheet-bar{
           display:flex; align-items:center; gap:.6rem; position:sticky; top:0; z-index:2;
           background:var(--panel2); padding:.65rem .8rem .5rem; border-bottom:1px solid var(--line);
-          border-radius:16px 16px 0 0;
+          border-radius:16px 16px 0 0; cursor:grab; touch-action:none;
         }
+        .sheet-bar:active{ cursor:grabbing; }
         .sheet-bar .grab{
           position:absolute; top:5px; left:50%; transform:translateX(-50%);
           width:38px; height:4px; border-radius:99px; background:var(--line);
@@ -621,6 +628,9 @@
           display:inline-flex; align-items:center; justify-content:center;
         }
         .sheet-bar .sheet-x svg{ width:18px; height:18px; }
+        .sheet-toggle svg{ transition:transform .25s ease; }
+        body.sheet-mini .sheet-toggle svg{ transform:rotate(180deg); }
+        @media (prefers-reduced-motion: reduce){ .sheet-toggle svg{ transition:none; } }
         .panel{ padding:.85rem .95rem 1.1rem; }
         .toast{ bottom:calc(84px + env(safe-area-inset-bottom, 0px)); }
         @media (prefers-reduced-motion: reduce){ .panel-col{ transition:none; } }
@@ -914,6 +924,9 @@
         <div class="sheet-bar">
           <span class="grab" aria-hidden="true"></span>
           <span class="ttl" id="sheetTitle">Opciones</span>
+          <button class="sheet-x sheet-toggle" id="sheetToggle" type="button" aria-label="Achicar o agrandar las opciones" aria-expanded="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
           <button class="sheet-x" id="sheetClose" type="button" aria-label="Cerrar opciones">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
           </button>
@@ -1301,8 +1314,8 @@
 <div class="field">
             <label>Color de los puntos</label>
             <div class="seg" id="sColorMode">
-              <button class="active" data-m="black">Negro</button>
-              <button data-m="orig">Color original</button>
+              <button data-m="black">Negro</button>
+              <button class="active" data-m="orig">Color original</button>
               <button data-m="palette">Paleta</button>
               <button data-m="cmyk">CMYK</button>
             </div>
@@ -2504,7 +2517,7 @@
         semiMode = 'dots'; syncSeg('#sMode', 'dots');
         semiPattern = 'dots'; $('#sPatternSel').value = 'dots';
         semiShape = 'ellipse'; syncSeg('#sShape', 'ellipse');
-        semiColor = 'black'; syncSeg('#sColorMode', 'black');
+        semiColor = 'orig'; syncSeg('#sColorMode', 'orig');
         $('#sPaletteBlock').hidden = true;
         semiPalette = 'atardecer'; $('#sPalettePreset').value = 'atardecer'; $('#sCustomPal').hidden = true;
         semiPreset = 'normal'; syncSeg('#sPreset', 'normal');
@@ -4126,7 +4139,7 @@
     });
 
     /* ---------- SEMITONOS (completo, vista previa en vivo) ---------- */
-    let semiMode = 'dots', semiColor = 'black', semiShape = 'circle', semiScope = 'full', semiZone = 'sh', semiApply = 'all';
+    let semiMode = 'dots', semiColor = 'orig', semiShape = 'circle', semiScope = 'full', semiZone = 'sh', semiApply = 'all';
     let semiPreset = 'normal';
     let semiPattern = 'dots', semiPalette = 'atardecer', semiKnock = 'none';
     /* Fondo de la vista previa de Semitonos: sobre el cuadriculado de
@@ -8258,15 +8271,36 @@
 
       /* Hoja de opciones: se abre al tocar una herramienta de la barra
          inferior y se cierra con su ✕ sin perder la herramienta activa;
-         «Ajustes» la vuelve a abrir. El título es el de la herramienta. */
+         «Ajustes» la vuelve a abrir. El título es el de la herramienta.
+         La hoja NO tapa el lienzo: abre a media altura, se arrastra
+         desde su barra para darle la altura que se quiera y con el
+         botón ⌄ se achica a una franja (solo la barra con el nombre)
+         para ver el diseño completo mientras se ajusta; tocar la
+         franja o el ⌄ la vuelve a abrir. */
       function syncSheetTitle(){
         var h2 = document.querySelector('.panel.active h2');
         var ttl = $('#sheetTitle');
         if (ttl && h2) ttl.textContent = h2.textContent.trim();
       }
+      var panelCol = document.querySelector('.panel-col');
+      var sheetBar = document.querySelector('.sheet-bar');
+      var sheetToggle = $('#sheetToggle');
+      function sheetSetMini(on){
+        document.body.classList.toggle('sheet-mini', on);
+        if (sheetToggle) sheetToggle.setAttribute('aria-expanded', String(!on));
+        if (on && panelCol){ panelCol.style.height = ''; panelCol.style.maxHeight = ''; }
+      }
+      function sheetResetSize(){
+        sheetSetMini(false);
+        if (panelCol){ panelCol.style.height = ''; panelCol.style.maxHeight = ''; }
+      }
+      if (sheetToggle) sheetToggle.addEventListener('click', function(){
+        sheetSetMini(!document.body.classList.contains('sheet-mini'));
+      });
       var rail = $('#rail');
       if (rail) rail.addEventListener('click', function(){
         document.body.classList.remove('sheet-closed');
+        sheetResetSize();
         syncSheetTitle();
       });
       var close = $('#sheetClose');
@@ -8275,8 +8309,48 @@
       if (opt) opt.addEventListener('click', function(){
         if (document.body.classList.contains('no-tool')){ mToast('Elige una herramienta en la barra de abajo'); return; }
         document.body.classList.remove('sheet-closed');
+        sheetSetMini(false);
         syncSheetTitle();
       });
+      /* Arrastrar la barra de la hoja cambia su altura en vivo; al
+         soltarla muy baja se queda achicada en franja. */
+      if (sheetBar && panelCol){
+        var drag = null, lastDragEnd = 0;
+        sheetBar.addEventListener('pointerdown', function(e){
+          if (e.target.closest('button')) return;
+          if (document.body.classList.contains('sheet-mini')) return; /* el toque simple la reabre */
+          if (!window.matchMedia('(max-width: 820px)').matches) return;
+          drag = { y: e.clientY, h: panelCol.getBoundingClientRect().height };
+          document.body.classList.add('sheet-drag');
+          panelCol.style.maxHeight = '88dvh'; /* el arrastre manda sobre el tope inicial */
+          try{ sheetBar.setPointerCapture(e.pointerId); }catch(err){}
+        });
+        sheetBar.addEventListener('pointermove', function(e){
+          if (!drag) return;
+          var nh = drag.h + (drag.y - e.clientY);
+          nh = Math.max(56, Math.min(window.innerHeight * 0.88, nh));
+          panelCol.style.height = nh + 'px';
+        });
+        var endDrag = function(){
+          if (!drag) return;
+          drag = null;
+          lastDragEnd = Date.now();
+          document.body.classList.remove('sheet-drag');
+          if (panelCol.getBoundingClientRect().height <= 110) sheetSetMini(true);
+          else if (sheetToggle) sheetToggle.setAttribute('aria-expanded', 'true');
+        };
+        sheetBar.addEventListener('pointerup', endDrag);
+        sheetBar.addEventListener('pointercancel', endDrag);
+        /* Tocar la franja achicada (fuera de los botones) la reabre. */
+        sheetBar.addEventListener('click', function(e){
+          if (e.target.closest('button')) return;
+          if (Date.now() - lastDragEnd < 350) return; /* fue un arrastre, no un toque */
+          if (document.body.classList.contains('sheet-mini')) sheetSetMini(false);
+        });
+        window.addEventListener('resize', function(){
+          if (window.innerWidth > 820){ if (panelCol){ panelCol.style.height = ''; panelCol.style.maxHeight = ''; } document.body.classList.remove('sheet-mini'); }
+        });
+      }
       syncSheetTitle();
     })();
     </script>
