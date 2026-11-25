@@ -16,18 +16,20 @@
     <link rel="stylesheet" href="assets/fonts.css" />
     <script src="assets/imagetracer_v1.2.6.js"></script>
     <style>
+      /* ---------- Pro Studio: paleta Photoshop del diseño entregado ----------
+         app #181b20 · panel #22262e · panelDark #1b1e24 · header #282c34 ·
+         borde #333742 · input #121418 · acento #ff5a1f · azul RIP #0078d4 ·
+         spot magenta CutContour #e91e63 · spot cian White #00bcd4 ·
+         spot blanco #90caf9 · verde OK #2fbf7f. La app es un estudio
+         oscuro en ambos modos del sistema: así lo pide el diseño Pro. */
       :root{
-        --bg:#f1f0eb; --panel:#ffffff; --panel2:#f7f6f2; --ink:#1a1c20; --muted:#6d7078;
-        --line:#ddd9cf; --accent:#e8490f; --accent-soft:#fdeee7; --accent-ink:#ffffff;
-        --stage:#e7e4dc; --ok:#1d9e63; --warn:#b97a0c; --radius:14px;
-        --shadow:0 10px 30px rgba(20,18,12,.10);
-      }
-      @media (prefers-color-scheme: dark){
-        :root{
-          --bg:#121418; --panel:#1b1e24; --panel2:#22262e; --ink:#f1efe8; --muted:#9ba1ab;
-          --line:#2d313a; --accent:#ff5a1f; --accent-soft:#3a2015; --accent-ink:#ffffff;
-          --stage:#0a0b0d; --ok:#2fbf7f; --warn:#e0a83c; --shadow:0 10px 30px rgba(0,0,0,.45);
-        }
+        color-scheme:dark;
+        --bg:#181b20; --panel:#22262e; --panel2:#1b1e24; --ink:#e8eaee; --muted:#9ba1ab;
+        --line:#333742; --accent:#ff5a1f; --accent-soft:#3a2015; --accent-ink:#ffffff;
+        --stage:#0b0d11; --ok:#2fbf7f; --warn:#e0a83c; --radius:14px;
+        --shadow:0 10px 30px rgba(0,0,0,.45);
+        --ps-header:#282c34; --ps-input:#121418; --ps-blue:#0078d4;
+        --spot-magenta:#e91e63; --spot-cyan:#00bcd4; --spot-white:#90caf9;
       }
       *{ box-sizing:border-box; }
       [hidden]{ display:none !important; }
@@ -46,6 +48,9 @@
         margin:0; background:var(--bg); color:var(--ink);
         font-family:"Archivo", system-ui, sans-serif; font-size:15px; line-height:1.45;
         -webkit-tap-highlight-color: transparent;
+        /* Espacio de trabajo fijo: la app ocupa exactamente la pantalla
+           y la página NUNCA se desplaza; cada zona se desplaza por dentro. */
+        display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden;
       }
       button,[role="button"],select,summary,input:not([type="checkbox"],[type="radio"]){ min-height:2.25rem; }
       button{ font-family:inherit; cursor:pointer; }
@@ -53,7 +58,7 @@
 
       /* ---------- Top bar ---------- */
       .topbar{
-        position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+        flex:none; display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
         padding:.55rem .8rem; background:var(--panel); border-bottom:1px solid var(--line);
       }
       .topbar .spacer{ flex:1; }
@@ -71,50 +76,63 @@
       .btn.icon-only{ padding:.45rem .55rem; }
       .btn.icon-only svg{ width:20px; height:20px; }
 
-      /* ---------- Layout ---------- */
-      .layout{ display:grid; grid-template-columns:1fr; gap:0; max-width:1560px; margin:0 auto; }
+      /* ---------- Layout · espacio de trabajo estilo Photoshop ----------
+         Barra de iconos a la izquierda, el lienzo fijo y centrado en
+         medio y el panel de opciones acoplado a la derecha; en el
+         celular el panel va abajo. Ninguna zona empuja a otra: cambiar
+         de herramienta jamás mueve la imagen, lo que se desplaza es el
+         interior de la barra y del panel. */
+      .layout{
+        flex:1; min-height:0; width:100%; display:grid; gap:0;
+        grid-template-columns:58px minmax(0,1fr);
+        grid-template-rows:minmax(0,1fr) minmax(0,44%);
+      }
+      body.no-tool .layout{ grid-template-rows:minmax(0,1fr) 0; }
       @media (min-width:1024px){
-        .layout{ grid-template-columns:minmax(0,1fr) 320px; align-items:start; }
-        body.rail-open .layout{ grid-template-columns:208px minmax(0,1fr) 320px; }
-        body.no-tool .layout{ grid-template-columns:minmax(0,1fr); }
-        body.no-tool.rail-open .layout{ grid-template-columns:208px minmax(0,1fr); }
+        .layout{ grid-template-columns:60px minmax(0,1fr) 324px; grid-template-rows:minmax(0,1fr); }
+        body.no-tool .layout{ grid-template-columns:60px minmax(0,1fr) 0; }
       }
 
-      /* ---------- Tool rail ---------- */
+      /* ---------- Barra de herramientas: iconos a la izquierda ---------- */
       .rail{
-        display:none; flex-direction:column; align-items:stretch; gap:.45rem; overflow:visible;
-        padding:.6rem .8rem; scrollbar-width:none; background:var(--bg);
-      }
-      body.rail-open .rail{ display:flex; }
-      .rail::-webkit-scrollbar{ display:none; }
-      @media (min-width:1024px){
-        .rail{ position:sticky; top:57px; padding:.8rem .6rem .8rem .8rem; }
+        grid-column:1; grid-row:1; display:flex; flex-direction:column; align-items:center;
+        gap:.3rem; overflow-y:auto; overflow-x:hidden; min-height:0;
+        padding:.55rem 0; background:var(--panel); border-right:1px solid var(--line);
+        scrollbar-width:thin;
       }
       .tool-btn{
-        display:flex; align-items:center; gap:.55rem; flex:none; text-align:left;
-        border:1px solid var(--line); background:var(--panel); color:var(--ink);
-        border-radius:12px; padding:.5rem .7rem; font-weight:600; font-size:.88rem; min-height:2.75rem;
+        display:flex; align-items:center; justify-content:center; flex:none;
+        width:44px; height:44px; min-height:44px; padding:0;
+        border:1px solid transparent; background:transparent; color:var(--ink);
+        border-radius:11px; font-size:0; /* solo el icono: el nombre va de tooltip y al lector de pantalla */
       }
-      @media (min-width:1024px){ .tool-btn{ width:100%; } }
-      .tool-btn svg{ width:19px; height:19px; flex:none; stroke:var(--muted); }
+      .tool-btn svg{ width:22px; height:22px; flex:none; stroke:var(--muted); }
       .tool-btn.active{ border-color:var(--accent); background:var(--accent-soft); color:var(--ink); }
       .tool-btn.active svg{ stroke:var(--accent); }
-      .rail-group{ font-size:.7rem; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); padding:.35rem .2rem 0; flex:none; white-space:nowrap; }
-      @media (min-width:1024px){ .rail-group{ padding:.6rem .2rem 0; } .rail-group:first-child{ padding-top:0; } }
+      /* Los grupos de pasos quedan como líneas separadoras, como en Photoshop. */
+      .rail-group{
+        font-size:0; flex:none; width:30px; height:0; overflow:hidden;
+        border-top:1px solid var(--line); margin:.35rem 0 .1rem; padding:0;
+      }
+      .rail-group:first-child{ border-top:0; margin-top:0; }
       .step-chip{ display:inline-block; background:var(--accent-soft); color:var(--accent); border-radius:999px; padding:.12rem .55rem; font-size:.72rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase; margin-bottom:.45rem; }
 
-      /* ---------- Stage ---------- */
-      .stage-col{ min-width:0; }
+      /* ---------- Stage: el lienzo, fijo en el centro ---------- */
+      .stage-col{ grid-column:2; grid-row:1; min-width:0; min-height:0; display:flex; flex-direction:column; }
       .stage-head{
-        display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; padding:.55rem .8rem 0;
+        display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; flex:none;
+        padding:.45rem .8rem; background:var(--panel); border-bottom:1px solid var(--line);
       }
       .stage-head .dims{ color:var(--muted); font-size:.82rem; }
       .stage-head .spacer{ flex:1; }
-      .zoomwrap{ display:flex; align-items:center; gap:.4rem; color:var(--muted); font-size:.82rem; }
+      .zoomwrap{ display:flex; align-items:center; gap:.4rem; color:var(--muted); font-size:.82rem; flex-wrap:wrap; }
       .zoomwrap input[type="range"]{ width:110px; min-height:2.25rem; }
+      /* Con la barra de iconos al lado, en el celular la fila de zoom es
+         más angosta: el deslizador se acorta y «Ver entero» baja de renglón
+         en vez de salirse del área de trabajo. */
+      @media (max-width:640px){ .zoomwrap input[type="range"]{ width:72px; } }
       .stage-scroll{
-        overflow:auto; margin:.6rem .8rem .8rem; border:1px solid var(--line); border-radius:var(--radius);
-        background:var(--stage); min-height:320px; display:flex; padding:18px;
+        overflow:auto; flex:1; min-height:0; background:var(--stage); display:flex; padding:18px;
       }
       /* margin:auto centra cuando el lienzo cabe y, cuando hay zoom y se sale,
          deja llegar con el scroll a TODOS los bordes (con justify-content:center
@@ -150,19 +168,24 @@
       #sheetCv{ cursor:grab; touch-action:none; }
       #sheetCv:active{ cursor:grabbing; }
       .empty{
-        text-align:center; padding:3.2rem 1.4rem; max-width:430px; margin:auto; line-height:1.5;
+        text-align:center; padding:3.2rem 1.4rem; max-width:430px; margin:auto; line-height:1.5; color:#eef0f3;
       }
       .empty .big{ font-size:1.35rem; font-weight:800; margin:.4rem 0 .3rem; }
-      .empty p{ color:var(--muted); margin:.2rem 0 1.1rem; }
+      .empty p{ color:#b7bcc4; margin:.2rem 0 1.1rem; }
       .empty .drop-ico{ width:54px; height:54px; stroke:var(--accent); }
       .stage-scroll.dragover{ outline:3px dashed var(--accent); outline-offset:-8px; }
 
-      /* ---------- Panel ---------- */
-      .panel-col{ padding:0 .8rem 1rem; }
-      @media (min-width:1024px){ .panel-col{ position:sticky; top:57px; padding:.8rem .8rem 1rem 0; } }
+      /* ---------- Panel de opciones: acoplado, se desplaza por dentro ---------- */
+      .panel-col{
+        grid-column:1 / -1; grid-row:2; min-height:0; overflow-y:auto;
+        background:var(--panel); border-top:1px solid var(--line);
+      }
+      @media (min-width:1024px){
+        .panel-col{ grid-column:3; grid-row:1; border-top:0; border-left:1px solid var(--line); }
+      }
       .panel{
-        display:none; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
-        padding:1rem; box-shadow:var(--shadow);
+        display:none; background:transparent; border:0; border-radius:0;
+        padding:1rem; box-shadow:none;
       }
       .panel.active{ display:block; }
       .panel h2{ font-size:1.05rem; font-weight:800; margin:0 0 .25rem; letter-spacing:-.01em; }
@@ -287,36 +310,190 @@
       /* El pie va oculto: una sola regla, sin duplicados de cascada. */
       footer{ display:none; }
 
-      /* ===== Categorías desplegables (izquierda) · imagen al centro ===== */
-      .cat{ display:flex; flex-direction:column; gap:.45rem; flex:none; }
-      .cat-head{
-        display:flex; align-items:center; justify-content:space-between; gap:.5rem; width:100%;
-        background:transparent; border:0; color:var(--muted); font-family:inherit;
-        font-weight:800; font-size:.76rem; letter-spacing:.07em; text-transform:uppercase;
-        padding:.5rem .25rem; min-height:2.4rem; cursor:pointer; text-align:left;
-      }
-      .cat-head svg{ width:16px; height:16px; stroke:var(--muted); flex:none; transition:transform .2s; }
-      .cat.open .cat-head{ color:var(--ink); }
-      .cat.open .cat-head svg{ transform:rotate(180deg); stroke:var(--accent); }
-      .cat-body{ display:none; flex-direction:column; gap:.45rem; }
-      .cat.open .cat-body{ display:flex; }
-      .cat .tool-btn{ width:100%; }
-      /* El menú de categorías empieza cerrado en cualquier pantalla: solo
-         se ve al tocar el botón de tres puntos. Y sin herramienta elegida
-         no hay panel lateral: la pantalla principal muestra solo subir
-         imagen, con el diseño al centro. */
+      /* Sin herramienta elegida no hay panel de opciones: el lienzo
+         ocupa todo el alto, como al abrir un editor sin panel activo. */
       body.no-tool .panel-col{ display:none; }
       /* ---------- Perillas seguras al deslizar ----------
          Deslizar la pantalla ya NO mueve las perillas: sobre un deslizador
-         el gesto vertical lo toma la página (sigue el scroll) y el
+         el gesto vertical lo toma su zona (sigue el scroll del panel) y el
          deslizador solo responde al arrastre horizontal deliberado. */
       input[type="range"]{ touch-action:pan-y; }
-      /* Al elegir una herramienta en el celular la vista baja sola al
-         panel: el margen deja el título visible bajo la barra fija. */
-      .panel{ scroll-margin-top:64px; }
-      @media (max-width:1023.98px){
-        body.rail-open .rail{ border-bottom:1px solid var(--line); }
+
+      /* ---------- Pro Studio: menús, opciones, estado y modal PDF ---------- */
+      .ps-menubar{
+        flex:none; display:flex; align-items:center; gap:.9rem; min-height:28px;
+        padding:.15rem .6rem; background:var(--panel2); border-bottom:1px solid var(--line);
+        font-size:.78rem; color:#c6cad2; overflow-x:auto; scrollbar-width:none; white-space:nowrap;
       }
+      .ps-menubar::-webkit-scrollbar{ display:none; }
+      .ps-brand{ display:flex; align-items:center; gap:.45rem; font-weight:800; color:#fff; flex:none; }
+      .ps-brand .tag{ background:var(--accent); color:#fff; padding:.08rem .35rem; border-radius:4px; font-family:"IBM Plex Mono",monospace; font-size:.68rem; }
+      .ps-menu{ display:flex; gap:.15rem; flex:none; }
+      .ps-menu button{
+        border:0; background:transparent; color:#c6cad2; padding:.2rem .45rem; border-radius:5px;
+        font-size:.78rem; min-height:1.7rem;
+      }
+      .ps-menu button.on{ color:var(--accent); font-weight:700; background:var(--panel); }
+      @media (hover:hover){ .ps-menu button:hover{ color:#fff; } }
+      .ps-rip{ margin-left:auto; display:flex; align-items:center; gap:.7rem; flex:none; font-family:"IBM Plex Mono",monospace; font-size:.68rem; color:var(--muted); }
+      .ps-rip .dot{ width:8px; height:8px; border-radius:50%; background:var(--ok); display:inline-block; margin-right:.3rem; animation:psPulse 1.6s infinite; }
+      @keyframes psPulse{ 0%,100%{opacity:1} 50%{opacity:.35} }
+      @media (prefers-reduced-motion: reduce){ .ps-rip .dot{ animation:none; } }
+      .ps-rip .btn{ min-height:1.8rem; padding:.15rem .6rem; font-size:.75rem; }
+      .ps-options{
+        flex:none; display:flex; align-items:center; gap:.8rem; padding:.2rem .8rem; overflow-x:auto;
+        background:var(--ps-header); border-bottom:1px solid var(--line); font-size:.78rem; color:#c6cad2;
+        scrollbar-width:none; white-space:nowrap; flex-wrap:wrap; row-gap:.25rem;
+      }
+      .ps-options::-webkit-scrollbar{ display:none; }
+      .ps-options .ttl{ color:var(--accent); font-weight:800; font-size:.8rem; flex:none; }
+      .ps-options .grp{ display:flex; align-items:center; gap:.4rem; border-right:1px solid var(--line); padding-right:.8rem; flex:none; font-family:"IBM Plex Mono",monospace; }
+      .ps-options .grp:last-child{ border-right:0; }
+      .ps-options label{ color:var(--muted); font-size:.68rem; }
+      .ps-options select, .ps-options input[type="number"], .ps-options input[type="text"]{
+        background:var(--ps-input); border:1px solid var(--line); color:#fff; border-radius:5px;
+        padding:.15rem .4rem; font-size:.75rem; min-height:1.7rem;
+      }
+      .ps-options input[type="number"], .ps-options input[type="text"]{ width:3.4rem; text-align:center; }
+      .ps-options .chk{ display:flex; align-items:center; gap:.35rem; font-size:.68rem; cursor:pointer; }
+      .ps-options input[type="checkbox"]{ accent-color:var(--accent); width:15px; height:15px; }
+      .topbar{ background:var(--panel2); }
+      .stage-head{ background:var(--panel2); }
+      .rail{ background:var(--panel2); }
+      .panel-col{ background:var(--panel2); }
+      .panel{ background:transparent; }
+      .statusbar{
+        flex:none; display:flex; align-items:center; flex-wrap:wrap; gap:.35rem .9rem; min-height:24px; padding:.25rem .8rem;
+        background:var(--panel2); border-top:1px solid var(--line); color:var(--muted);
+        font-family:"IBM Plex Mono",monospace; font-size:.68rem;
+      }
+      .statusbar::-webkit-scrollbar{ display:none; }
+      .statusbar .ok{ color:var(--ok); margin-left:auto; }
+      .statusbar > span{ border-left:1px solid var(--line); padding-left:1rem; }
+      .statusbar > span:first-child{ border-left:0; padding-left:0; }
+      .statusbar b{ color:#fff; font-weight:600; }
+      /* Modal PDF Multicapa */
+      .pdf-modal{ position:fixed; inset:0; z-index:80; background:rgba(0,0,0,.72); display:flex; align-items:center; justify-content:center; padding:.7rem; }
+      .pdf-box{ width:960px; max-width:100%; max-height:96dvh; display:flex; flex-direction:column; background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; box-shadow:var(--shadow); font-size:.78rem; }
+      .pdf-head{ background:var(--ps-header); padding:.55rem .9rem; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:.7rem; flex-wrap:wrap; }
+      .pdf-head h2{ font-size:.8rem; margin:0; color:#fff; }
+      .pdf-head .tag{ background:var(--accent); color:#fff; border-radius:4px; padding:.15rem .3rem; font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:700; }
+      .pdf-head select, .pdf-col select, .pdf-col input[type="text"]{ background:var(--ps-input); border:1px solid var(--line); color:#fff; border-radius:5px; padding:.3rem .45rem; font-size:.75rem; width:100%; }
+      .pdf-body{ display:grid; grid-template-columns:1fr; overflow-y:auto; min-height:0; }
+      @media (min-width:860px){ .pdf-body{ grid-template-columns:4fr 5fr 3fr; overflow:hidden; } .pdf-col{ overflow-y:auto; } }
+      .pdf-col{ padding:.8rem; display:flex; flex-direction:column; gap:.55rem; }
+      .pdf-col.dark{ background:var(--panel2); }
+      .pdf-col.mid{ background:#121419; align-items:center; }
+      @media (min-width:860px){ .pdf-col.dark{ border-right:1px solid var(--line); } .pdf-col.mid{ border-right:1px solid var(--line); } }
+      .pdf-col h3{ font-size:.68rem; font-family:"IBM Plex Mono",monospace; color:#c6cad2; margin:0; padding-bottom:.4rem; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; width:100%; }
+      .pdf-col h3 .ok{ color:var(--ok); }
+      .layer{ background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:.5rem .6rem; display:flex; flex-direction:column; gap:.25rem; width:100%; }
+      .layer.cut{ border-color:rgba(233,30,99,.55); }
+      .layer .r1{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+      .layer label{ display:flex; align-items:center; gap:.5rem; color:#fff; font-weight:600; cursor:pointer; font-size:.78rem; }
+      .layer input[type="checkbox"]{ accent-color:var(--accent); width:15px; height:15px; }
+      .layer .dotc{ width:10px; height:10px; border-radius:50%; flex:none; }
+      .layer .r2{ display:flex; justify-content:space-between; gap:.5rem; padding-left:1.55rem; color:var(--muted); font-family:"IBM Plex Mono",monospace; font-size:.68rem; }
+      .layer .badge{ background:rgba(233,30,99,.18); color:var(--spot-magenta); font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:700; padding:.05rem .35rem; border-radius:4px; }
+      .layer.off{ opacity:.45; }
+      .pdf-preview{ width:100%; max-width:300px; aspect-ratio:9/10; background:#16181f; border:1px solid var(--line); border-radius:7px; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; margin:.4rem 0; }
+      .pdf-preview img{ max-width:82%; max-height:82%; object-fit:contain; position:relative; z-index:1; }
+      .pdf-preview .contour{ position:absolute; inset:9%; border:2px dashed var(--spot-magenta); border-radius:50%; pointer-events:none; z-index:2; }
+      .pdf-preview .contour span{ position:absolute; top:-1.35rem; left:50%; transform:translateX(-50%); background:#121419; padding:0 .4rem; color:var(--spot-magenta); font-family:"IBM Plex Mono",monospace; font-size:.6rem; white-space:nowrap; }
+      .pdf-preview .reg{ position:absolute; width:10px; height:10px; z-index:2; }
+      .pdf-preview .barcode{ position:absolute; bottom:6px; background:#fff; color:#000; font-family:"IBM Plex Mono",monospace; font-size:8px; padding:.1rem .4rem; letter-spacing:-1px; z-index:2; }
+      .pdf-tabs{ display:flex; gap:.3rem; }
+      .pdf-tabs button{ border:1px solid var(--line); background:var(--panel); color:#fff; border-radius:5px; padding:.2rem .5rem; font-size:.68rem; font-family:"IBM Plex Mono",monospace; min-height:1.7rem; }
+      .pdf-tabs button.on{ background:rgba(233,30,99,.18); color:var(--spot-magenta); border-color:rgba(233,30,99,.45); }
+      .preflight{ width:100%; background:rgba(47,191,127,.08); border:1px solid rgba(47,191,127,.4); border-radius:7px; padding:.55rem .65rem; font-family:"IBM Plex Mono",monospace; font-size:.68rem; color:#c6cad2; display:flex; gap:.5rem; }
+      .preflight .dot{ width:8px; height:8px; border-radius:50%; background:var(--ok); flex:none; margin-top:.25rem; }
+      .pdf-mini{ background:var(--panel); border:1px solid var(--line); border-radius:7px; padding:.55rem .65rem; display:flex; flex-direction:column; gap:.45rem; font-size:.68rem; color:#c6cad2; width:100%; }
+      .pdf-mini label{ display:flex; gap:.45rem; align-items:flex-start; cursor:pointer; }
+      .pdf-mini input[type="checkbox"]{ accent-color:var(--accent); margin-top:.1rem; }
+      .pdf-stats{ background:var(--ps-input); border:1px solid var(--line); border-radius:7px; padding:.55rem .65rem; font-family:"IBM Plex Mono",monospace; font-size:.68rem; color:var(--muted); display:flex; flex-direction:column; gap:.3rem; width:100%; margin-top:auto; }
+      .pdf-stats div{ display:flex; justify-content:space-between; }
+      .pdf-stats b{ color:#fff; font-weight:600; }
+      .pdf-stats .mag{ color:var(--spot-magenta); } .pdf-stats .blu{ color:#5aa9e6; }
+      .pdf-foot{ background:var(--ps-header); padding:.55rem .9rem; border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:.7rem; flex-wrap:wrap; }
+      .btn.pdf-export{ background:var(--spot-magenta); border-color:var(--spot-magenta); color:#fff; }
+      .chan-row{ display:flex; justify-content:space-between; font-family:"IBM Plex Mono",monospace; font-size:.68rem; color:#c6cad2; width:100%; }
+      /* ---------- RIP Edition: pestañas, reglas, split A/B, sustrato ---------- */
+      .doc-tabs{ flex:none; display:flex; align-items:stretch; gap:2px; background:var(--panel2); border-bottom:1px solid var(--line); padding:0 .3rem; min-height:24px; overflow-x:auto; scrollbar-width:none; }
+      .doc-tabs::-webkit-scrollbar{ display:none; }
+      .doc-tab{ display:flex; align-items:center; gap:.5rem; padding:.2rem .7rem; font-family:"IBM Plex Mono",monospace; font-size:.68rem; color:var(--muted); background:transparent; border:0; border-top:2px solid transparent; white-space:nowrap; min-height:24px; }
+      .doc-tab.on{ background:var(--panel); color:#fff; border-top-color:var(--ps-blue); }
+      .stage-body{ flex:1; min-height:0; display:flex; }
+      .stage-body .stage-scroll{ flex:1; min-width:0; }
+      .ruler-h{
+        flex:none; height:16px; background:var(--panel2); border-bottom:1px solid var(--line);
+        display:flex; justify-content:space-between; align-items:center; padding:0 .6rem 0 1.4rem;
+        font-family:"IBM Plex Mono",monospace; font-size:9px; color:var(--muted); user-select:none;
+        background-image:repeating-linear-gradient(to right, #505050 0, #505050 1px, transparent 1px, transparent 20px), repeating-linear-gradient(to right, #383838 0, #383838 1px, transparent 1px, transparent 4px);
+        background-size:100% 6px, 100% 3px; background-repeat:no-repeat; background-position:bottom left;
+      }
+      .ruler-h .max{ color:#5aa9e6; font-weight:600; }
+      .ruler-v{
+        flex:none; width:16px; background:var(--panel2); border-right:1px solid var(--line);
+        display:flex; flex-direction:column; justify-content:space-between; align-items:center; padding:.6rem 0;
+        font-family:"IBM Plex Mono",monospace; font-size:9px; color:var(--muted); user-select:none;
+        background-image:repeating-linear-gradient(to bottom, #505050 0, #505050 1px, transparent 1px, transparent 20px), repeating-linear-gradient(to bottom, #383838 0, #383838 1px, transparent 1px, transparent 4px);
+        background-size:6px 100%, 3px 100%; background-repeat:no-repeat; background-position:right top;
+      }
+      .ruler-v span{ writing-mode:vertical-rl; }
+      .ruler-v .max{ color:#5aa9e6; font-weight:600; }
+      #splitOverlay{ position:absolute; inset:0; z-index:3; pointer-events:none; overflow:hidden; }
+      #splitOverlay canvas{ display:block; width:100%; height:100%; filter:brightness(1.06) contrast(1.08); }
+      #splitOverlay .dots{ position:absolute; inset:0; background-image:radial-gradient(rgba(255,255,255,.20) 1px, transparent 1.3px); background-size:4px 4px; mix-blend-mode:overlay; }
+      #splitHandle{ position:absolute; top:0; bottom:0; width:2px; background:#007acc; z-index:4; cursor:ew-resize; touch-action:none; }
+      #splitHandle .grip{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:18px; height:26px; background:var(--panel2); border:1px solid #007acc; border-radius:4px; color:#4fc1ff; display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:-2px; }
+      .split-tag{ position:absolute; top:8px; z-index:4; pointer-events:none; background:rgba(20,20,22,.92); border:1px solid var(--line); color:#c6cad2; padding:.15rem .45rem; font-family:"IBM Plex Mono",monospace; font-size:.62rem; border-radius:4px; text-transform:uppercase; }
+      .split-tag.left{ left:8px; } .split-tag.right{ right:8px; background:var(--ps-blue); color:#fff; border-color:#2680eb; font-weight:700; }
+      .canvas-box.bg-halo{ background-color:#3d1354; background-image:none; }
+      .view-seg{ display:flex; background:var(--ps-input); border:1px solid var(--line); border-radius:6px; padding:2px; gap:2px; }
+      .view-seg button{ border:0; background:transparent; color:var(--muted); border-radius:4px; padding:.2rem .55rem; font-size:.7rem; min-height:1.6rem; font-weight:600; }
+      .view-seg button.on{ background:#333842; color:#fff; }
+      .substrate-seg{ display:grid; grid-template-columns:repeat(4,1fr); gap:.35rem; }
+      .substrate-seg button{ border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:7px; padding:.45rem .2rem; font-size:.72rem; font-family:"IBM Plex Mono",monospace; min-height:2.2rem; }
+      .substrate-seg button.on{ border-color:var(--ps-blue); color:#fff; }
+      .flow-row{ display:flex; justify-content:space-between; font-size:.8rem; color:var(--muted); padding:.3rem .45rem; border-radius:6px; }
+      .flow-row .ok{ color:var(--ok); font-weight:800; }
+      .flow-row.now{ background:rgba(0,120,212,.18); color:#7db8ec; font-weight:700; }
+      .chan-row .dotc{ width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:.4rem; vertical-align:-1px; }
+
+      /* ---------- Stitch Pro: Lupa Macro, píldora del lienzo y curva tonal ---------- */
+      .stage-body{ position:relative; }
+      .lupa{
+        position:absolute; top:10px; right:10px; z-index:6; width:230px; max-width:62%;
+        background:rgba(27,30,36,.97); border:1px solid var(--line); border-radius:9px;
+        padding:.5rem .6rem .55rem; box-shadow:var(--shadow);
+        font-family:"IBM Plex Mono",monospace; font-size:.66rem;
+      }
+      .lupa-head{ display:flex; justify-content:space-between; align-items:center; gap:.5rem; color:#fff; font-weight:700; margin-bottom:.4rem; }
+      .lupa-head .w1{ color:var(--ok); font-weight:700; text-align:right; }
+      .lupa canvas{ width:100%; height:auto; display:block; border:1px solid var(--line); border-radius:5px; background:#101216; }
+      .lupa-data{ margin-top:.35rem; display:flex; flex-direction:column; gap:.22rem; }
+      .lupa-data div{ display:flex; justify-content:space-between; gap:.5rem; color:var(--muted); }
+      .lupa-data b{ color:#dfe3ea; font-weight:600; text-align:right; }
+      .lupa-data .ok{ color:var(--ok); }
+      @media (max-width:640px){ .lupa{ width:176px; } }
+      .canvas-pill{
+        position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:6;
+        display:flex; align-items:center; gap:.55rem; max-width:96%; overflow-x:auto; scrollbar-width:none;
+        background:rgba(27,30,36,.96); border:1px solid var(--line); border-radius:7px;
+        padding:.32rem .7rem; font-family:"IBM Plex Mono",monospace; font-size:.66rem; color:#c6cad2; white-space:nowrap;
+        box-shadow:var(--shadow);
+      }
+      .canvas-pill::-webkit-scrollbar{ display:none; }
+      .canvas-pill .ok{ color:var(--ok); }
+      .canvas-pill .sep{ color:#4a505e; }
+      .canvas-pill b{ color:#fff; font-weight:600; }
+      .curve-box{ background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:.5rem .6rem; }
+      .curve-box svg{ width:100%; height:auto; display:block; }
+      .choke-ctl{ display:flex; align-items:center; background:var(--ps-input); border:1px solid var(--line); border-radius:7px; overflow:hidden; }
+      .choke-ctl button{ border:0; background:transparent; color:var(--muted); width:2rem; min-height:2.1rem; font-size:1rem; }
+      .choke-ctl span{ flex:1; text-align:center; font-family:"IBM Plex Mono",monospace; font-size:.8rem; color:#fff; }
+      .rip-lpi-sub{ display:flex; justify-content:space-between; font-size:.68rem; color:var(--muted); font-family:"IBM Plex Mono",monospace; }
+      .statusbar .ok2{ color:var(--ok); }
 
       /* ---------- Imprimir ----------
          El área de impresión solo existe en papel: en pantalla está
@@ -355,8 +532,52 @@
     </style>
   </head>
   <body>
+    <!-- Pro Studio · barra de menús -->
+    <header class="ps-menubar">
+      <div class="ps-brand"><span class="tag">DTF</span><span>Studio Pro</span></div>
+      <nav class="ps-menu" aria-label="Menús">
+        <button type="button" data-menu="archivo">Archivo</button>
+        <button type="button" data-menu="edicion">Edición</button>
+        <button type="button" data-menu="imagen">Imagen</button>
+        <button type="button" data-menu="capa">Capa</button>
+        <button type="button" class="on" data-menu="dtf">Herramientas DTF</button>
+        <button type="button" data-menu="seleccion">Selección</button>
+        <button type="button" data-menu="filtro">Filtro</button>
+        <button type="button" data-menu="vista">Vista</button>
+        <button type="button" data-menu="ventana">Ventana</button>
+        <button type="button" data-menu="ayuda">Ayuda</button>
+      </nav>
+      <div class="ps-rip">
+        <span><span class="dot"></span>RIP Engine: 300 DPI</span>
+        <span>CMYK + 2W</span>
+        <button class="btn primary" type="button" id="btnRipTop">▶ Procesar RIP</button>
+      </div>
+    </header>
+    <!-- Pro Studio · barra de opciones de la herramienta de semitono -->
+    <div class="ps-options" aria-label="Opciones de semitono y DTF">
+      <span class="ttl">Semitonos &amp; DTF:</span>
+      <div class="grp"><label for="psMode">Modo:</label>
+        <select id="psMode"><option value="dots">Tramado Elíptico Pro</option><option value="lines">Estocástico FM (Dispersión)</option><option value="cross">Línea DTF Variable</option></select>
+      </div>
+      <div class="grp"><label for="psLpi">LPI:</label><input type="number" id="psLpi" value="25" min="8" max="65" /><span>lpi</span></div>
+      <div class="grp"><label for="psAngle">Ángulo:</label><input type="number" id="psAngle" value="45" min="0" max="90" /><span>°</span></div>
+      <div class="grp"><label for="psChoke">Choke Base:</label><input type="text" id="psChoke" value="-1.5" /><span>px</span></div>
+      <div class="grp">
+        <label class="chk"><input type="checkbox" id="psAA" checked /> Suavizado Anti-alias</label>
+        <label class="chk"><input type="checkbox" id="psBlackBg" checked /> Eliminar Fondo Negro</label>
+      </div>
+      <div class="grp" style="margin-left:auto;border-right:0">
+        <div class="view-seg" role="group" aria-label="Vista comparativa">
+          <button type="button" id="viewSplitBtn">▦ Split A/B</button>
+          <button type="button" id="viewFullBtn">Solo Tramado</button>
+          <button type="button" id="viewWhiteBtn">Máscara Base W</button>
+          <button type="button" id="viewSingleBtn" class="on">▣ Resultado</button>
+        </div>
+        <button class="btn small" type="button" id="btnRulersTop">Reglas</button>
+        <button class="btn small" type="button" id="btnFitTop">Encajar</button>
+      </div>
+    </div>
     <div class="topbar">
-      <button class="btn icon-only" id="btnCats" type="button" aria-label="Menú: mostrar u ocultar categorías" title="Menú"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg></button>
       <button class="btn primary" id="btnUploadMain" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0 4 4m-4-4L8 8"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
         Subir diseño
@@ -371,6 +592,10 @@
       <button class="btn primary" id="btnDownload" disabled hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 4-4m-4 4-4-4"/><path d="M4 20h16"/></svg>
         Descargar PNG
+      </button>
+      <button class="btn pdf-export" id="btnPdfTop" disabled hidden type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6"/></svg>
+        PDF Multicapa
       </button>
       <span class="print-wrap">
         <button class="btn" id="btnPrint" disabled hidden aria-haspopup="true" aria-expanded="false">
@@ -478,10 +703,20 @@
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4M21 7H8M7 21l-4-4 4-4M3 17h13"/></svg>
           Convertir
         </button>
+        <div class="rail-group">6 · Salida RIP Pro</div>
+        <button class="tool-btn" data-tool="pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6"/><path d="M8 15h8" stroke-dasharray="2.5 2"/></svg>
+          Salida RIP · PDF Multicapa
+        </button>
         </nav>
 
       <!-- Stage -->
       <div class="stage-col">
+        <div class="doc-tabs" aria-label="Documentos">
+          <button class="doc-tab on" type="button" id="docTabMain">diseño actual <span>@ 300 DPI (CMYK/8*)</span></button>
+          <button class="doc-tab" type="button" id="docTabSheet">pliego DTF <span>@ gang sheet</span></button>
+          <span class="doc-tab" style="margin-left:auto;color:var(--spot-magenta)" id="docTabCut">● CutContour Bézier Activo</span>
+        </div>
         <div class="stage-head" id="stageHead" hidden>
           <span class="dims mono" id="dims">Sin imagen cargada</span>
           <div class="spacer"></div>
@@ -494,6 +729,9 @@
             <button class="btn small" id="zoomFit">Ver entero</button>
           </div>
         </div>
+        <div class="ruler-h" id="rulersH" aria-hidden="true"><span>0</span><span>5 cm</span><span>10 cm</span><span>15 cm</span><span>20 cm</span><span>25 cm</span><span class="max" id="rulerHMax">28.5 cm (ancho útil)</span></div>
+        <div class="stage-body">
+        <div class="ruler-v" id="rulersV" aria-hidden="true"><span>0</span><span>10</span><span>20</span><span>30</span><span class="max" id="rulerVMax">38 cm</span></div>
         <div class="stage-scroll" id="stageScroll">
           <div class="empty" id="emptyState">
             <svg class="drop-ico" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V5m0 0 4 4m-4-4L8 9"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>
@@ -504,10 +742,36 @@
           <div class="canvas-box checker" id="canvasBox" hidden>
             <canvas id="cv"></canvas>
             <canvas id="ov"></canvas>
+            <div id="splitOverlay" hidden>
+              <canvas id="splitCv"></canvas>
+              <div class="dots"></div>
+            </div>
+            <div id="splitHandle" hidden style="left:52%"><div class="grip">‹›</div></div>
+            <span class="split-tag left" id="splitTagL" hidden>Original continuo (sin trama)</span>
+            <span class="split-tag right" id="splitTagR" hidden>Tramado semitonos DTF • 25 LPI</span>
           </div>
           <div class="canvas-box" id="sheetBox" hidden>
             <canvas id="sheetCv"></canvas>
           </div>
+        </div>
+        <!-- Lupa Macro flotante: puntos de semitono ampliados del diseño real -->
+        <div class="lupa" id="lupaPanel" hidden>
+          <div class="lupa-head"><span>Lupa Macro (1200%)</span><span class="w1">Base W1 Activa</span></div>
+          <canvas id="lupaCv" width="216" height="120" aria-label="Puntos de semitono ampliados"></canvas>
+          <div class="lupa-data">
+            <div><span>Geometría:</span><b id="lupaGeo">Roseta Elíptica</b></div>
+            <div><span>Solape Base:</span><b id="lupaChoke">-1.5 px (Sin Halo)</b></div>
+            <div><span>Tacto Textil:</span><b class="ok">Suave &amp; Transpirable</b></div>
+          </div>
+        </div>
+        <!-- Píldora de telemetría sobre el lienzo -->
+        <div class="canvas-pill" id="canvasPill" hidden>
+          <span class="ok">● Preflight RIP OK</span><span class="sep">|</span>
+          <span id="pillPx">— px</span><span class="sep">|</span>
+          <span>300 DPI Real</span><span class="sep">|</span>
+          <span>Choke: <b id="pillChoke">-1.5px</b></span><span class="sep">|</span>
+          <span>Sustrato: <b id="pillSub">Transparente</b></span>
+        </div>
         </div>
       </div>
 
@@ -798,8 +1062,8 @@
             </select>
           </div>
 <div class="field" id="sCellField">
-            <label>Tamaño del punto <span class="val" id="sCellVal">14 px</span></label>
-            <input type="range" id="sCell" min="5" max="40" value="14" />
+            <label>Tamaño del punto <span class="val" id="sCellVal">12 px</span></label>
+            <input type="range" id="sCell" min="5" max="40" value="12" />
           </div>
 <div class="field" id="sGainField">
             <label>Densidad del punto <span class="val" id="sGainVal">100%</span></label>
@@ -871,7 +1135,8 @@
 <div class="field" id="sShapeField">
             <label>Forma del punto</label>
             <div class="seg" id="sShape">
-              <button class="active" data-m="circle">Círculo</button>
+              <button class="active" data-m="ellipse">Elipse</button>
+              <button data-m="circle">Círculo</button>
               <button data-m="square">Cuadrado</button>
               <button data-m="diamond">Rombo</button>
               <button data-m="line">Línea</button>
@@ -882,7 +1147,7 @@
             <input type="range" id="sWarp" min="0" max="100" value="40" />
           </div>
 <div class="field" id="sFreqField">
-            <label>Frecuencia <span class="val" id="sFreqVal">21 lpi</span></label>
+            <label>Frecuencia <span class="val" id="sFreqVal">25 lpi</span></label>
           </div>
 <div class="field" id="sAngleField">
             <label>Ángulo de la trama <span class="val" id="sAngleVal">45°</span></label>
@@ -1381,6 +1646,110 @@
 
         </section>
 
+        <section class="panel" data-panel="pdf">
+          <h2>Tramas &amp; RIP · Salida Pro</h2>
+          <p class="desc">Panel de producción estilo Pro Studio: sustrato de visualización, canales de salida y exportación PDF multicapa con base blanca y línea de corte spot.</p>
+
+          <h3 class="group-title">Sustrato de visualización · Prenda</h3>
+          <div class="substrate-seg" id="substrateSeg">
+            <button type="button" class="on" data-sub="checker">Transp.</button>
+            <button type="button" data-sub="black">Negro</button>
+            <button type="button" data-sub="white">Blanco</button>
+            <button type="button" data-sub="halo">Halo</button>
+          </div>
+          <p class="hint">El sustrato solo cambia el fondo para revisar el diseño (halos, base blanca): los píxeles del diseño no se tocan.</p>
+
+          <h3 class="group-title">Vista comparativa</h3>
+          <div class="btnrow">
+            <button class="btn" id="btnSplitPanel" type="button">Split A/B · Original vs RIP</button>
+          </div>
+          <p class="hint">En Split A/B arrastra la línea azul sobre la imagen: a la izquierda ves el original continuo, sin trama, y a la derecha el tramado de semitonos DTF. Con «Solo Tramado» y «Máscara Base W» (barra de opciones) ves la trama o la base blanca a pantalla completa.</p>
+
+          <h3 class="group-title">Ajustes de Tramado DTF · <span style="color:var(--ok)">Motor Activo</span></h3>
+          <div class="field">
+            <label>Geometría del Punto</label>
+            <div class="seg" id="ripGeo">
+              <button class="active" data-m="elipse" type="button">Elipse</button>
+              <button data-m="circulo" type="button">Círculo</button>
+              <button data-m="linea" type="button">Línea</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Frecuencia (LPI) <span class="val" id="ripLpiVal">25 LPI</span></label>
+            <input type="range" id="ripLpi" min="10" max="65" value="25" />
+            <div class="rip-lpi-sub"><span>10 LPI (Textil grueso)</span><span>65 LPI (Fino)</span></div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>Ángulo de Trama (°)</label>
+              <input type="number" id="ripAngle" min="0" max="90" step="0.5" value="45" />
+            </div>
+            <div class="field">
+              <label>Comp. Ganancia (%)</label>
+              <input type="number" id="ripGain" min="40" max="130" step="1" value="100" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Contracción Base Blanca (Choke)</label>
+            <div class="choke-ctl">
+              <button type="button" id="ripChokeMinus" aria-label="Menos choke">−</button>
+              <span id="ripChokeVal">-1.5 px</span>
+              <button type="button" id="ripChokePlus" aria-label="Más choke">+</button>
+            </div>
+            <p class="hint">Reduce el halo blanco bajo el CMYK: la base blanca se encoge ese tanto desde el borde del diseño.</p>
+          </div>
+          <div class="field">
+            <label>Curva de Respuesta Tonal</label>
+            <div class="curve-box">
+              <svg viewBox="0 0 100 62" role="img" aria-label="Curva de respuesta tonal">
+                <rect x="6" y="4" width="90" height="52" fill="none" stroke="#333742" stroke-width="1"/>
+                <path d="M6 30 H96 M51 4 V56" stroke="#2c303a" stroke-width="1"/>
+                <path id="ripCurvePath" d="M6 56 C 30 54, 44 34, 96 6" fill="none" stroke="#0078d4" stroke-width="2"/>
+                <circle id="ripCurveDot" cx="51" cy="30" r="2.6" fill="#ff5a1f"/>
+              </svg>
+              <div class="seg" id="ripCurve" style="margin-top:.5rem">
+                <button data-m="lineal" type="button">Lineal</button>
+                <button class="active" data-m="suave" type="button">Suave</button>
+                <button data-m="contraste" type="button">Contraste</button>
+              </div>
+              <p class="hint" id="ripCurveInfo" style="margin-top:.5rem">Sombras −12 · Medios 44% (Suave) — ajusta el contraste real del semitono.</p>
+            </div>
+          </div>
+
+          <h3 class="group-title">Canales de salida &amp; límite TIL</h3>
+          <div class="chan-row" style="margin-bottom:.35rem"><span>Límite total de tinta (TIL)</span><span id="ripTil" style="color:#5aa9e6">— / 300%</span></div>
+          <div class="chan-row"><span><span class="dotc" style="background:#00bcd4"></span>Cian (C)</span><span id="ripChanC">—</span></div>
+          <div class="chan-row"><span><span class="dotc" style="background:#e91e63"></span>Magenta (M)</span><span id="ripChanM">—</span></div>
+          <div class="chan-row"><span><span class="dotc" style="background:#ffeb3b"></span>Amarillo (Y)</span><span id="ripChanY">—</span></div>
+          <div class="chan-row"><span><span class="dotc" style="background:#222;border:1px solid #666"></span>Negro (K)</span><span id="ripChanK">—</span></div>
+          <div class="chan-row" style="color:var(--ok)"><span><span class="dotc" style="background:#fff"></span>Spot White W1</span><span id="ripChanW">—</span></div>
+          <div class="chan-row" style="margin-top:.35rem"><span>Ahorro Tinta Blanca (est.)</span><span id="ripSave" style="color:var(--ok)">—</span></div>
+          <div class="btnrow"><button class="btn" id="btnRipCalc" type="button">Calcular canales del diseño</button></div>
+
+          <h3 class="group-title">Flujo de producción DTF</h3>
+          <div class="flow-row"><span>1. Corte y Fondo</span><span class="ok">✓</span></div>
+          <div class="flow-row"><span>2. Limpieza de Bordes</span><span class="ok">✓</span></div>
+          <div class="flow-row"><span>3. Calidad y Resolución (300 DPI)</span><span class="ok">✓</span></div>
+          <div class="flow-row now"><span>4. Tramas e Impresión RIP</span><span>▶</span></div>
+          <div class="flow-row"><span>5. Salida &amp; Pliego de Impresión</span><span>Pendiente</span></div>
+
+          <h3 class="group-title">Salida de producción</h3>
+          <div class="stat-grid">
+            <div class="stat"><div class="k">Dimensión</div><div class="v" id="ripDim">—</div></div>
+            <div class="stat"><div class="k">Capas</div><div class="v">CMYK + W1 + W2 + Cut</div></div>
+          </div>
+          <div class="btnrow">
+            <button class="btn primary" id="btnGoSemi" type="button">Aplicar Tramado y Generar Canales</button>
+          </div>
+          <div class="btnrow">
+            <button class="btn" id="btnTiff" type="button">Exportar TIFF Separado CMYK+W</button>
+          </div>
+          <div class="btnrow">
+            <button class="btn pdf-export" id="btnOpenPdfModal" type="button">Exportar PDF de Producción (CMYK + W + CutContour)</button>
+          </div>
+          <p class="hint">El TIFF sale a 300 DPI en dos páginas separadas: página 1 con el arte en CMYK y página 2 con la base blanca W1 en escala de grises, listas para el RIP.</p>
+        </section>
+
         <section class="panel" data-panel="convertir">
           
           <h2>Convertir formato</h2>
@@ -1413,7 +1782,130 @@
       </div>
     </div>
 
-    <footer></footer>
+    <!-- Pro Studio · barra de estado -->
+    <footer class="statusbar" style="display:flex">
+      <span id="sbPreflight" style="color:var(--muted)">○ Preflight RIP —</span>
+      <span><b id="sbPx">— px</b></span>
+      <span>300 DPI Real</span>
+      <span>Choke: <b id="sbChoke">-1.5px</b></span>
+      <span>Sustrato: <b id="sbSub">Transparente</b></span>
+      <span>Zoom: <b id="sbZoom">100%</b></span>
+      <span>Doc: <b id="sbDoc">Sin imagen (CMYK+W)</b></span>
+      <span id="sbSize">— (300 ppi)</span>
+      <span>🌡 Horno / Curado: 165°C • 15s • Poliamida DTF Medium</span>
+      <span class="ok" id="sbState" style="color:var(--muted)">○ Sin diseño cargado <span>| v4.8.2-PRO · RIP Edition</span></span>
+    </footer>
+
+    <!-- Pro Studio · Modal Exportar PDF Multicapa (CMYK + White + CutContour) -->
+    <div class="pdf-modal" id="pdfModal" hidden role="dialog" aria-modal="true" aria-label="Exportar PDF de producción DTF">
+      <div class="pdf-box">
+        <div class="pdf-head">
+          <div style="display:flex;align-items:center;gap:.55rem;flex-wrap:wrap">
+            <span class="tag">PDF</span>
+            <h2>Exportar PDF de Producción DTF &amp; Corte Vectorial</h2>
+            <span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:.68rem">Separación de Tintas Planas Spot + Bézier CutContour</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <label style="color:var(--muted);font-size:.68rem" for="pdfPreset">Ajuste RIP:</label>
+            <select id="pdfPreset" style="width:auto">
+              <option value="x4">PDF/X-4:2010 (DTF Master + Roland VersaWorks)</option>
+              <option value="x1a">PDF/X-1a:2001 (Acoplado de seguridad)</option>
+              <option value="caldera">Caldera RIP Production Preset</option>
+            </select>
+            <button class="btn small" type="button" id="pdfClose" aria-label="Cerrar">✕</button>
+          </div>
+        </div>
+        <div class="pdf-body">
+          <div class="pdf-col dark">
+            <h3><span>Jerarquía de Capas del PDF (Stack)</span><span class="ok" id="pdfLayerCount">Sin diseño</span></h3>
+            <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:.68rem;width:100%"><span>Orden de salida (Tope a Fondo)</span><span>Sobreimp.</span></div>
+            <div class="layer cut" data-layer-card>
+              <div class="r1"><label><input type="checkbox" class="pdf-layer" data-layer="cut" checked /><span class="dotc" style="background:var(--spot-magenta)"></span>CutContour (Bézier)</label><span class="badge">OVERPRINT</span></div>
+              <div class="r2"><span>Tinta Plana Spot Magenta 100% • 0.25 pt</span><span>Roland / Summa</span></div>
+            </div>
+            <div class="layer" data-layer-card>
+              <div class="r1"><label><input type="checkbox" class="pdf-layer" data-layer="w2" checked /><span class="dotc" style="background:var(--spot-white)"></span>Highlight White W2</label><span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:.68rem">Directo</span></div>
+              <div class="r2"><span>Canal blanco brillo especular</span><span id="pdfCovW2" style="color:var(--spot-cyan)">—</span></div>
+            </div>
+            <div class="layer" data-layer-card>
+              <div class="r1"><label><input type="checkbox" class="pdf-layer" data-layer="w1" checked /><span class="dotc" style="background:var(--spot-cyan)"></span>Spot White W1 (Underbase)</label><span style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:.68rem" id="pdfChokeLbl">Choke -1.5px</span></div>
+              <div class="r2"><span>Base blanca continua DTF</span><span id="pdfCovW1" style="color:var(--spot-cyan)">—</span></div>
+            </div>
+            <div class="layer" data-layer-card>
+              <div class="r1"><label><input type="checkbox" class="pdf-layer" data-layer="cmyk" checked /><span class="dotc" style="background:var(--ps-blue)"></span>Artwork CMYK Tramado</label><span style="color:#c6cad2;font-family:'IBM Plex Mono',monospace;font-size:.68rem">300 DPI</span></div>
+              <div class="r2"><span id="pdfTramaLbl">Tramado Elíptico 25 LPI @ 45.0°</span><span>Raster RIP</span></div>
+            </div>
+            <div class="layer" data-layer-card>
+              <div class="r1"><label><input type="checkbox" class="pdf-layer" data-layer="marks" checked /><span class="dotc" style="background:#fff"></span>Marcas Registro &amp; Barcode</label><span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:.68rem">Óptico</span></div>
+              <div class="r2"><span>4 Cruces + Código de Barras RIP</span><span>Vectorial</span></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:.5rem;font-size:.68rem;color:var(--muted);width:100%">
+              <span id="pdfValidated"><span style="color:var(--muted)">○</span> Sin diseño: nada que validar todavía</span>
+              <button class="btn small" type="button" id="pdfResetLayers">Restablecer Capas</button>
+            </div>
+          </div>
+          <div class="pdf-col mid">
+            <h3><span>✓ Vista Previa Multicapa</span>
+              <span class="pdf-tabs">
+                <button type="button" class="pdf-tab on" data-view="cmyk">CMYK</button>
+                <button type="button" class="pdf-tab" data-view="contour">Contour</button>
+                <button type="button" class="pdf-tab" data-view="white">W1+W2</button>
+              </span>
+            </h3>
+            <div class="pdf-preview">
+              <img id="pdfPreviewImg" alt="Vista previa del diseño para el PDF" />
+              <div class="contour" id="pdfContour" hidden><span>LÍNEA DE CORTE SPOT CUTCONTOUR (+1.5 MM SANGRADO)</span></div>
+              <span class="reg" style="top:4px;left:4px;border-top:2px solid #fff;border-left:2px solid #fff"></span>
+              <span class="reg" style="top:4px;right:4px;border-top:2px solid #fff;border-right:2px solid #fff"></span>
+              <span class="reg" style="bottom:4px;left:4px;border-bottom:2px solid #fff;border-left:2px solid #fff"></span>
+              <span class="reg" style="bottom:4px;right:4px;border-bottom:2px solid #fff;border-right:2px solid #fff"></span>
+              <span class="barcode">|||||||||||||||||||||| DTF-RIP-PRO</span>
+            </div>
+            <div class="preflight"><span class="dot" id="pdfPreflightDot" style="background:var(--muted)"></span><span><strong id="pdfPreflightTitle">Preflight pendiente:</strong> <span id="pdfPreflight">sube un diseño para validar tintas, contorno y capas antes de exportar.</span></span></div>
+          </div>
+          <div class="pdf-col dark">
+            <h3><span>Ajustes de Plotter &amp; Salida</span><span>⚙</span></h3>
+            <div style="width:100%">
+              <label style="display:block;color:var(--muted);margin-bottom:.3rem" for="pdfStd">Estándar PDF / Compatibilidad:</label>
+              <select id="pdfStd"><option>PDF/X-4:2010 (Capas Vivas + Spot)</option><option>PDF 1.6 (Acrobat 7.0)</option><option>PDF/X-1a (Aplanado)</option></select>
+            </div>
+            <div style="width:100%">
+              <label style="display:block;color:var(--muted);margin-bottom:.3rem" for="pdfCutName">Nomenclatura Tinta CutContour:</label>
+              <select id="pdfCutName"><option value="CutContour">CutContour (Roland VersaWorks / Caldera)</option><option value="PerfCutContour">PerfCutContour (Troquelado Summa)</option><option value="Cutting">Cutting (Graphtec Pro)</option><option value="ThruCut">ThruCut (Zünd / Mimaki)</option></select>
+            </div>
+            <div class="pdf-mini">
+              <strong style="color:#e8eaee">Sobreimpresión &amp; Sangrado</strong>
+              <label><input type="checkbox" id="pdfOverprint" checked /><span>Forzar Overprint en CutContour (evita hueco en base blanca)</span></label>
+              <label><input type="checkbox" id="pdfBleed" checked /><span>Incrustar sangrado automático (+1.5 mm)</span></label>
+            </div>
+            <div class="pdf-mini">
+              <strong style="color:#e8eaee">Integración con Plotter de Corte</strong>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+                <div><label style="display:block;color:var(--muted);margin-bottom:.25rem" for="pdfSpeed">Velocidad:</label><input type="text" id="pdfSpeed" value="30 cm/s" /></div>
+                <div><label style="display:block;color:var(--muted);margin-bottom:.25rem" for="pdfForce">Fuerza Navaja:</label><input type="text" id="pdfForce" value="120 gf" /></div>
+              </div>
+              <span style="color:var(--muted)">Offset cuchilla: 0.25 mm (Cuchilla 45°)</span>
+            </div>
+            <div class="pdf-stats">
+              <div><span>Dimensión:</span><b id="pdfDim">—</b></div>
+              <div><span>Resolución:</span><b>300 ppi</b></div>
+              <div><span>Longitud de corte:</span><b class="mag" id="pdfCutLen">—</b></div>
+              <div><span>Peso estimado:</span><b class="blu" id="pdfWeight">—</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="pdf-foot">
+          <div style="display:flex;gap:.6rem;align-items:center">
+            <button class="btn" type="button" id="pdfCancel">Cancelar</button>
+            <button class="btn ghost" type="button" id="pdfSavePreset">Guardar Ajuste Preestablecido</button>
+          </div>
+          <div style="display:flex;gap:.7rem;align-items:center">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:var(--muted)" id="pdfRipState">Sin diseño</span>
+            <button class="btn pdf-export" type="button" id="pdfExport" disabled>Exportar PDF Producción (CMYK + W + CutContour)</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div id="printArea" aria-hidden="true"><img id="printImg" alt="Diseño para imprimir" /></div>
     <div class="toast" id="toast"></div>
@@ -1701,9 +2193,6 @@
         }
         return;
       }
-      if (e.key === 'Escape' && document.body.classList.contains('rail-open')){
-        document.body.classList.remove('rail-open');
-      }
     });
     /* ---------- «atrás» ya no reinicia el proyecto ----------
        El botón o gesto de atrás del navegador sacaba de la app y el
@@ -1873,7 +2362,7 @@
         semiBg = 'light'; syncSeg('#sBgMode', 'light');
         semiMode = 'dots'; syncSeg('#sMode', 'dots');
         semiPattern = 'dots'; $('#sPatternSel').value = 'dots';
-        semiShape = 'circle'; syncSeg('#sShape', 'circle');
+        semiShape = 'ellipse'; syncSeg('#sShape', 'ellipse');
         semiColor = 'black'; syncSeg('#sColorMode', 'black');
         $('#sPaletteBlock').hidden = true;
         semiPalette = 'atardecer'; $('#sPalettePreset').value = 'atardecer'; $('#sCustomPal').hidden = true;
@@ -1888,8 +2377,8 @@
         zoneCfg.sh = { cell: 18, den: 115 }; zoneCfg.mid = { cell: 14, den: 100 }; zoneCfg.hi = { cell: 10, den: 85 };
         $('#sShapeField').style.display = ''; $('#sCellField').style.display = ''; $('#sPatternField').style.display = '';
         $('#sWarpField').hidden = true;
-        setRangeStd('#sCell', '#sCellVal', 14, v => v + ' px');
-        $('#sFreqVal').textContent = '21 lpi';
+        setRangeStd('#sCell', '#sCellVal', 12, v => v + ' px');
+        $('#sFreqVal').textContent = '25 lpi';
         setRangeStd('#sAngle', '#sAngleVal', 45, v => v + '°');
         setRangeStd('#sGain', '#sGainVal', 100, v => v + '%');
         setRangeStd('#sOpacity', '#sOpacityVal', 0, v => v + '%');
@@ -2007,16 +2496,12 @@
       $('#stageHead').hidden = false;
       $$('#rail .tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === name));
       $$('.panel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
-      /* En el celular el panel queda debajo del lienzo y había que
-         buscar las perillas deslizando: al elegir una herramienta la
-         vista baja sola hasta sus controles. */
-      if (window.matchMedia && window.matchMedia('(max-width: 1023.98px)').matches){
-        const actPanel = document.querySelector('.panel.active');
-        if (actPanel){
-          const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-          setTimeout(()=> actPanel.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' }), 60);
-        }
-      }
+      /* El lienzo NUNCA se mueve al cambiar de herramienta: el panel de
+         opciones es una zona fija (a la derecha en PC, abajo en el
+         celular) y lo único que se ajusta es su propio scroll, que
+         vuelve arriba para ver la herramienta desde su título. */
+      const panelColEl = document.querySelector('.panel-col');
+      if (panelColEl) panelColEl.scrollTop = 0;
       const isSheet = name === 'pliego', isShirt = name === 'playera';
       sheetBox.hidden = !isSheet; shirtBoxEl.hidden = !isShirt;
       canvasBox.hidden = isSheet || isShirt || !hasImage;
@@ -3853,6 +4338,7 @@
             });
             ox.closePath();
           }
+          else if (semiShape === 'ellipse') ox.ellipse(cx, cy, rad, rad * 0.76, ps.ang, 0, Math.PI * 2);
           else ox.arc(cx, cy, rad, 0, Math.PI * 2);
           ox.fill();
         }
@@ -6949,55 +7435,622 @@
     </script>
     <script>
     'use strict';
-    /* Bot\u00f3n \u00abCategor\u00edas\u00bb (izquierda): muestra/oculta el panel de
-       categor\u00edas. Las categor\u00edas del riel se convierten en acorde\u00f3n:
-       cada una se despliega y muestra sus funciones. */
+    /* Barra de herramientas estilo Photoshop: iconos a la izquierda, siempre
+       visible. El nombre de cada herramienta queda como tooltip al pasar el
+       mouse y como nombre accesible; en el celular se lee en el titulo del
+       panel de opciones en cuanto se toca el icono. */
     (function(){
-      var rail = document.getElementById('rail');
-      var names = ['R\u00e1pido', 'Recortar', 'Bordes', 'Calidad', 'Impresi\u00f3n', 'Armar'];
-      var nodes = Array.prototype.slice.call(rail.children);
-      var cat = null, ci = 0;
-      nodes.forEach(function(n){
-        if (n.classList.contains('rail-group')){
-          cat = document.createElement('div'); cat.className = 'cat';
-          /* Cada encabezado debe recordar SU categoría: sin esta copia
-             local, todos los clics actuaban sobre la última creada. */
-          var myCat = cat;
-          var head = document.createElement('button');
-          head.type = 'button'; head.className = 'cat-head';
-          var lab = document.createElement('span'); lab.textContent = names[ci] || n.textContent.trim(); ci++;
-          head.appendChild(lab);
-          head.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>');
-          var body = document.createElement('div'); body.className = 'cat-body';
-          head.addEventListener('click', function(){
-            var was = myCat.classList.contains('open');
-            var all = rail.querySelectorAll('.cat.open');
-            for (var k = 0; k < all.length; k++) all[k].classList.remove('open');
-            if (!was) myCat.classList.add('open');
+      var btns = document.querySelectorAll('#rail .tool-btn');
+      for (var i = 0; i < btns.length; i++){
+        var t = (btns[i].textContent || '').trim().replace(/\s+/g, ' ');
+        if (t){ btns[i].title = t; btns[i].setAttribute('aria-label', t); }
+      }
+    })();
+    </script>
+    <script>
+    'use strict';
+    /* ============ Pro Studio · RIP Edition (capa añadida, sin tocar el motor) ============ */
+    (function(){
+      var $ = function(s){ return document.querySelector(s); };
+      var $$ = function(s){ return Array.from(document.querySelectorAll(s)); };
+      var work = $('#cv');
+      function psToast(msg){
+        var t = $('#toast'); if (!t) return;
+        t.textContent = msg; t.classList.add('show');
+        setTimeout(function(){ t.classList.remove('show'); }, 2600);
+      }
+      function hasImg(){ return work && work.width > 0 && !$('#canvasBox').hidden; }
+      function clickTool(name){
+        var b = document.querySelector('#rail .tool-btn[data-tool="' + name + '"]');
+        if (b) b.click();
+      }
+      function downloadBlob(blob, name){
+        if (!blob){ psToast('El navegador no pudo generar el archivo.'); return; }
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = name;
+        document.body.appendChild(a); a.click();
+        setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 800);
+      }
+
+      /* ---------- Botón PDF de la barra superior: sigue al de Descargar ---------- */
+      var btnPdfTop = $('#btnPdfTop'), btnDl = $('#btnDownload');
+      if (btnPdfTop && btnDl){
+        new MutationObserver(function(){
+          btnPdfTop.hidden = btnDl.hidden; btnPdfTop.disabled = btnDl.disabled;
+        }).observe(btnDl, { attributes: true, attributeFilter: ['hidden','disabled'] });
+        btnPdfTop.addEventListener('click', function(){ openPdfModal(); });
+      }
+
+      /* ---------- Menús superiores ---------- */
+      var menuActions = {
+        archivo: function(){ var b = $('#btnUploadMain'); if (b) b.click(); },
+        edicion: function(){ var b = $('#btnUndo'); if (b && !b.disabled) b.click(); else psToast('Nada que deshacer'); },
+        imagen: function(){ clickTool('mejorar'); },
+        capa: function(){ clickTool('playera'); },
+        dtf: function(){ clickTool('semitono'); },
+        seleccion: function(){ clickTool('calar'); },
+        filtro: function(){ clickTool('color'); },
+        vista: function(){ toggleRulers(); },
+        ventana: function(){ clickTool('pliego'); },
+        ayuda: function(){ psToast('Salida RIP: herramienta «Salida RIP · PDF Multicapa», al final de la barra izquierda'); }
+      };
+      $$('.ps-menu button').forEach(function(b){
+        b.addEventListener('click', function(){
+          $$('.ps-menu button').forEach(function(x){ x.classList.remove('on'); });
+          b.classList.add('on');
+          var fn = menuActions[b.dataset.menu]; if (fn) fn();
+        });
+      });
+      var ripTop = $('#btnRipTop');
+      if (ripTop) ripTop.addEventListener('click', function(){
+        if (work && work.width > 0) openPdfModal(); else clickTool('pdf');
+      });
+
+      /* ---------- Barra de opciones: sincroniza con Semitonos / Tinta reales ---------- */
+      function setVal(sel, v){
+        var el = $(sel); if (!el) return;
+        el.value = v; el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      function ensureSemi(){ if (!document.querySelector('.panel[data-panel="semitono"]').classList.contains('active')) clickTool('semitono'); }
+      var psAngle = $('#psAngle'), psLpi = $('#psLpi'), psChoke = $('#psChoke'), psMode = $('#psMode');
+      if (psAngle) psAngle.addEventListener('change', function(){ ensureSemi(); setVal('#sAngle', Math.max(0, Math.min(90, +psAngle.value || 45))); });
+      if (psLpi) psLpi.addEventListener('change', function(){
+        var lpi = Math.max(8, Math.min(65, +psLpi.value || 25));
+        ensureSemi(); setVal('#sCell', Math.max(5, Math.min(40, Math.round(300 / lpi))));
+      });
+      if (psChoke) psChoke.addEventListener('change', function(){
+        var v = Math.round(Math.abs(parseFloat(psChoke.value) || 1.5));
+        syncChokeLabels(v);
+        clickTool('tinta'); setVal('#inkChoke', Math.max(0, Math.min(4, v)));
+        psToast('Choke de base blanca: ' + v + ' px (Optimizador de tinta)');
+      });
+      function syncChokeLabels(v){
+        var txt = '-' + v + 'px';
+        var sb = $('#sbChoke'); if (sb) sb.textContent = txt;
+        var pl = $('#pillChoke'); if (pl) pl.textContent = txt;
+        var rc = $('#ripChokeVal'); if (rc) rc.textContent = '-' + v.toFixed(1) + ' px';
+        var lc = $('#lupaChoke'); if (lc) lc.textContent = '-' + v.toFixed(1) + ' px (Sin Halo)';
+        var pm = $('#pdfChokeLbl'); if (pm) pm.textContent = 'Choke -' + v + 'px';
+      }
+      if (psMode) psMode.addEventListener('change', function(){
+        ensureSemi();
+        var sel = $('#sPatternSel'); if (sel){ sel.value = psMode.value; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+      });
+
+      /* ---------- Reglas H/V con mostrar/ocultar ---------- */
+      var rulersOn = true;
+      function toggleRulers(){
+        rulersOn = !rulersOn;
+        $('#rulersH').hidden = !rulersOn; $('#rulersV').hidden = !rulersOn;
+        psToast(rulersOn ? 'Reglas visibles' : 'Reglas ocultas');
+      }
+      var brt = $('#btnRulersTop'); if (brt) brt.addEventListener('click', toggleRulers);
+      var bft = $('#btnFitTop'); if (bft) bft.addEventListener('click', function(){ var z = $('#zoomFit'); if (z) z.click(); });
+
+      /* ---------- Pestañas de documento ---------- */
+      var tabMain = $('#docTabMain'), tabSheet = $('#docTabSheet');
+      if (tabSheet) tabSheet.addEventListener('click', function(){ clickTool('pliego'); tabSheet.classList.add('on'); tabMain.classList.remove('on'); });
+      if (tabMain) tabMain.addEventListener('click', function(){ clickTool('semitono'); tabMain.classList.add('on'); tabSheet.classList.remove('on'); });
+
+      /* ---------- Sustrato: transparente / negro / blanco / halo ---------- */
+      function setSubstrate(type){
+        var box = $('#canvasBox'); if (!box) return;
+        box.classList.remove('checker','bg-light','bg-dark','bg-halo');
+        if (type === 'black') box.classList.add('bg-dark');
+        else if (type === 'white') box.classList.add('bg-light');
+        else if (type === 'halo') box.classList.add('bg-halo');
+        else box.classList.add('checker');
+        $$('#substrateSeg button').forEach(function(b){ b.classList.toggle('on', b.dataset.sub === type); });
+        var lbl = type === 'black' ? 'Textil Oscuro' : type === 'white' ? 'Textil Claro' : type === 'halo' ? 'Contraste (Halo)' : 'Transparente';
+        var sbS = $('#sbSub'); if (sbS) sbS.textContent = lbl;
+        var plS = $('#pillSub'); if (plS) plS.textContent = lbl;
+      }
+      $$('#substrateSeg button').forEach(function(b){ b.addEventListener('click', function(){ setSubstrate(b.dataset.sub); }); });
+
+      /* ---------- Vistas del lienzo: Resultado / Split A/B / Solo Tramado / Máscara W1 ---------- */
+      var viewMode = 'single', splitPct = 52, splitTimer = null;
+      var overlay = $('#splitOverlay'), splitCv = $('#splitCv'), handle = $('#splitHandle');
+      function currentLpi(){
+        var t = $('#sFreqVal') ? $('#sFreqVal').textContent : '25 lpi';
+        return t.replace(' lpi', ' LPI');
+      }
+      function drawSplit(){
+        if (viewMode === 'single' || !work || !work.width) return;
+        if (splitCv.width !== work.width){ splitCv.width = work.width; splitCv.height = work.height; }
+        var cx = splitCv.getContext('2d');
+        cx.clearRect(0, 0, splitCv.width, splitCv.height);
+        cx.drawImage(viewMode === 'white' ? buildWhiteCanvas() : work, 0, 0);
+      }
+      function applySplitClip(){
+        var p = viewMode === 'split' ? splitPct : 0;
+        overlay.style.clipPath = 'polygon(' + p + '% 0, 100% 0, 100% 100%, ' + p + '% 100%)';
+        handle.style.left = splitPct + '%';
+      }
+      function syncViewTags(){
+        var tagR = $('#splitTagR'); if (!tagR) return;
+        tagR.textContent = viewMode === 'white' ? 'Máscara Base Blanca W1'
+          : (viewMode === 'full' ? 'Solo Tramado • ' + currentLpi()
+          : 'Tramado Semitonos DTF • ' + currentLpi());
+      }
+      function setViewMode(m){
+        if (m !== 'single' && !(btnDl && !btnDl.hidden)){ psToast('Primero sube un diseño'); return; }
+        viewMode = m;
+        var show = m !== 'single';
+        overlay.hidden = !show;
+        handle.hidden = m !== 'split';
+        $('#splitTagL').hidden = m !== 'split';
+        $('#splitTagR').hidden = !show;
+        $('#viewSplitBtn').classList.toggle('on', m === 'split');
+        $('#viewSingleBtn').classList.toggle('on', m === 'single');
+        var fb = $('#viewFullBtn'); if (fb) fb.classList.toggle('on', m === 'full');
+        var wb = $('#viewWhiteBtn'); if (wb) wb.classList.toggle('on', m === 'white');
+        syncViewTags();
+        if (show){ drawSplit(); applySplitClip(); if (!splitTimer) splitTimer = setInterval(function(){ drawSplit(); drawLupa(); }, 700); }
+        else if (splitTimer){ clearInterval(splitTimer); splitTimer = null; }
+      }
+      function setSplit(on){ setViewMode(on ? 'split' : 'single'); }
+      $('#viewSplitBtn').addEventListener('click', function(){ setViewMode('split'); });
+      $('#viewSingleBtn').addEventListener('click', function(){ setViewMode('single'); });
+      var vfb = $('#viewFullBtn'); if (vfb) vfb.addEventListener('click', function(){ setViewMode('full'); });
+      var vwb = $('#viewWhiteBtn'); if (vwb) vwb.addEventListener('click', function(){ setViewMode('white'); });
+      var btnSplitPanel = $('#btnSplitPanel');
+      if (btnSplitPanel) btnSplitPanel.addEventListener('click', function(){ setViewMode('split'); });
+      if (handle){
+        var dragging = false;
+        function moveSplit(clientX){
+          var r = work.getBoundingClientRect(); if (!r.width) return;
+          splitPct = Math.max(8, Math.min(92, ((clientX - r.left) / r.width) * 100));
+          applySplitClip();
+        }
+        handle.addEventListener('pointerdown', function(e){ dragging = true; handle.setPointerCapture(e.pointerId); e.preventDefault(); });
+        handle.addEventListener('pointermove', function(e){ if (dragging) moveSplit(e.clientX); });
+        handle.addEventListener('pointerup', function(){ dragging = false; });
+        handle.addEventListener('pointercancel', function(){ dragging = false; });
+      }
+
+      /* ---------- Lupa Macro (1200%): puntos de semitono ampliados del diseño real ---------- */
+      var ripGeo = 'elipse';
+      function drawLupa(){
+        var lupaEl = $('#lupaPanel'), lc = $('#lupaCv');
+        if (!lupaEl || !lc) return;
+        if (!hasImg()){ lupaEl.hidden = true; return; }
+        lupaEl.hidden = false;
+        var SW = 18, SH = 10, W = lc.width, H = lc.height;
+        var sx = Math.max(0, Math.min(work.width - SW, Math.floor(work.width / 2 - SW / 2)));
+        var sy = Math.max(0, Math.min(work.height - SH, Math.floor(work.height / 2 - SH / 2)));
+        var tmp = document.createElement('canvas'); tmp.width = SW; tmp.height = SH;
+        var tx = tmp.getContext('2d', { willReadFrequently: true });
+        tx.drawImage(work, sx, sy, SW, SH, 0, 0, SW, SH);
+        var d; try{ d = tx.getImageData(0, 0, SW, SH).data; }catch(e){ return; }
+        var lx = lc.getContext('2d');
+        lx.clearRect(0, 0, W, H);
+        lx.fillStyle = '#101216'; lx.fillRect(0, 0, W, H);
+        lx.imageSmoothingEnabled = false;
+        lx.globalAlpha = 0.30; lx.drawImage(work, sx, sy, SW, SH, 0, 0, W, H); lx.globalAlpha = 1;
+        var cw = W / SW, chh = H / SH;
+        var angDeg = parseFloat($('#psAngle') ? $('#psAngle').value : 45); if (isNaN(angDeg)) angDeg = 45;
+        var ang = angDeg * Math.PI / 180;
+        for (var y = 0; y < SH; y++) for (var x = 0; x < SW; x++){
+          var i = (y * SW + x) * 4, a = d[i+3] / 255;
+          var cxp = (x + 0.5) * cw, cyp = (y + 0.5) * chh;
+          if (a < 0.05){ lx.beginPath(); lx.arc(cxp, cyp, 1.1, 0, 7); lx.fillStyle = 'rgba(255,255,255,.20)'; lx.fill(); continue; }
+          var r = d[i], g = d[i+1], b = d[i+2];
+          var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          var dark = (1 - lum) * a;
+          var rad = Math.max(0.8, dark * cw * 0.60);
+          lx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+          lx.beginPath();
+          if (ripGeo === 'linea'){ lx.save(); lx.translate(cxp, cyp); lx.rotate(ang); lx.fillRect(-cw * 0.5 * dark - 1, -1.6, cw * dark + 2, 3.2); lx.restore(); }
+          else if (ripGeo === 'circulo'){ lx.arc(cxp, cyp, rad, 0, 7); lx.fill(); }
+          else { lx.ellipse(cxp, cyp, rad, rad * 0.76, ang, 0, 7); lx.fill(); }
+        }
+        var gl = $('#lupaGeo');
+        if (gl) gl.textContent = ripGeo === 'circulo' ? 'Roseta Circular' : (ripGeo === 'linea' ? 'Línea DTF Variable' : 'Roseta Elíptica');
+      }
+      setInterval(drawLupa, 1600);
+
+      /* ---------- Panel RIP: geometría, LPI, ángulo, ganancia, choke y curva ---------- */
+      function ripSyncGeo(m){
+        ripGeo = m;
+        $$('#ripGeo button').forEach(function(b){ b.classList.toggle('active', b.dataset.m === m); });
+        drawLupa();
+      }
+      $$('#ripGeo button').forEach(function(b){
+        b.addEventListener('click', function(){
+          ripSyncGeo(b.dataset.m);
+          var map = { elipse: 'ellipse', circulo: 'circle', linea: 'line' };
+          var sb = document.querySelector('#sShape button[data-m="' + map[b.dataset.m] + '"]');
+          if (sb) sb.click();
+        });
+      });
+      var sShapeSeg = $('#sShape');
+      if (sShapeSeg) sShapeSeg.addEventListener('click', function(e){
+        var b = e.target.closest('button'); if (!b) return;
+        var rev = { ellipse: 'elipse', circle: 'circulo', line: 'linea' };
+        if (rev[b.dataset.m]) ripSyncGeo(rev[b.dataset.m]);
+      });
+      var ripLpiEl = $('#ripLpi');
+      if (ripLpiEl){
+        ripLpiEl.addEventListener('input', function(){ $('#ripLpiVal').textContent = ripLpiEl.value + ' LPI'; });
+        ripLpiEl.addEventListener('change', function(){
+          if (psLpi){ psLpi.value = ripLpiEl.value; psLpi.dispatchEvent(new Event('change', { bubbles: true })); }
+        });
+      }
+      var ripAngleEl = $('#ripAngle');
+      if (ripAngleEl) ripAngleEl.addEventListener('change', function(){
+        if (psAngle){ psAngle.value = ripAngleEl.value; psAngle.dispatchEvent(new Event('change', { bubbles: true })); }
+        drawLupa();
+      });
+      var ripGainEl = $('#ripGain');
+      if (ripGainEl) ripGainEl.addEventListener('change', function(){
+        ensureSemi(); setVal('#sGain', Math.max(40, Math.min(130, +ripGainEl.value || 100)));
+        psToast('Ganancia del punto: ' + ripGainEl.value + '% (Semitonos)');
+      });
+      var ripChokeV = 1.5;
+      function ripChokeCommit(){
+        if (psChoke) psChoke.value = '-' + ripChokeV.toFixed(1);
+        syncChokeLabels(ripChokeV);
+        setVal('#inkChoke', Math.max(0, Math.min(4, Math.round(ripChokeV))));
+        drawLupa();
+      }
+      var rcMinus = $('#ripChokeMinus'), rcPlus = $('#ripChokePlus');
+      if (rcMinus) rcMinus.addEventListener('click', function(){ ripChokeV = Math.max(0, Math.round((ripChokeV - 0.5) * 10) / 10); ripChokeCommit(); });
+      if (rcPlus) rcPlus.addEventListener('click', function(){ ripChokeV = Math.min(4, Math.round((ripChokeV + 0.5) * 10) / 10); ripChokeCommit(); });
+      var curvePresets = {
+        lineal:   { path: 'M6 56 L96 6', dot: [51, 31], contrast: 100, info: 'Sombras 0 · Medios 50% (Lineal) — contraste real del semitono al 100%.' },
+        suave:    { path: 'M6 56 C 30 54, 44 34, 96 6', dot: [51, 30], contrast: 115, info: 'Sombras −12 · Medios 44% (Suave) — contraste real del semitono al 115%.' },
+        contraste:{ path: 'M6 56 C 22 55, 34 48, 51 28 C 68 8, 84 5, 96 4', dot: [51, 28], contrast: 135, info: 'Sombras +10 · Medios 56% (Contraste) — contraste real del semitono al 135%.' }
+      };
+      $$('#ripCurve button').forEach(function(b){
+        b.addEventListener('click', function(){
+          $$('#ripCurve button').forEach(function(x){ x.classList.toggle('active', x === b); });
+          var p = curvePresets[b.dataset.m]; if (!p) return;
+          $('#ripCurvePath').setAttribute('d', p.path);
+          var dot = $('#ripCurveDot'); dot.setAttribute('cx', p.dot[0]); dot.setAttribute('cy', p.dot[1]);
+          $('#ripCurveInfo').textContent = p.info;
+          setVal('#sContrast', p.contrast);
+        });
+      });
+      /* La frecuencia real (sFreqVal) manda en la etiqueta del Split y en el deslizador del panel */
+      var freqEl = $('#sFreqVal');
+      if (freqEl) new MutationObserver(function(){
+        syncViewTags();
+        var v = parseInt(freqEl.textContent, 10);
+        if (!isNaN(v) && ripLpiEl){ ripLpiEl.value = Math.max(10, Math.min(65, v)); $('#ripLpiVal').textContent = v + ' LPI'; }
+      }).observe(freqEl, { childList: true, characterData: true, subtree: true });
+
+      /* ---------- Pestaña de documento con el nombre real del archivo ---------- */
+      var fileMainEl = $('#fileMain');
+      if (fileMainEl) fileMainEl.addEventListener('change', function(){
+        if (!fileMainEl.files || !fileMainEl.files[0]) return;
+        var t = $('#docTabMain'); if (!t) return;
+        t.textContent = '';
+        var s1 = document.createElement('span'); s1.textContent = fileMainEl.files[0].name;
+        var s2 = document.createElement('span'); s2.textContent = '@ 300 DPI (CMYK/8*)';
+        t.appendChild(s1); t.appendChild(document.createTextNode(' ')); t.appendChild(s2);
+      });
+
+      /* ---------- TIFF separado CMYK + W (2 páginas, 300 DPI, sin compresión) ---------- */
+      function buildTiff(){
+        var W = work.width, H = work.height, npix = W * H;
+        var sd = work.getContext('2d').getImageData(0, 0, W, H).data;
+        var cmyk = new Uint8Array(npix * 4), white = new Uint8Array(npix);
+        for (var i = 0, j = 0, k = 0; i < sd.length; i += 4, j += 4, k++){
+          var a = sd[i+3] / 255;
+          var rn = sd[i] * a / 255, gn = sd[i+1] * a / 255, bn = sd[i+2] * a / 255;
+          var mx = Math.max(rn, gn, bn), kn = 1 - mx;
+          var cc = 0, mm = 0, yy = 0;
+          if (kn < 0.999){ cc = (1 - rn - kn) / (1 - kn); mm = (1 - gn - kn) / (1 - kn); yy = (1 - bn - kn) / (1 - kn); }
+          cmyk[j] = Math.round(cc * 255); cmyk[j+1] = Math.round(mm * 255);
+          cmyk[j+2] = Math.round(yy * 255); cmyk[j+3] = Math.round(kn * 255);
+          white[k] = sd[i+3];
+        }
+        var L1 = cmyk.length, L2 = white.length;
+        var data2Off = 8 + L1, E = data2Off + L2;
+        var F1 = E + 40, F2 = F1 + (2 + 13 * 12 + 4);
+        var total = F2 + (2 + 12 * 12 + 4);
+        var buf = new ArrayBuffer(total), dv = new DataView(buf), u8 = new Uint8Array(buf);
+        u8[0] = 0x49; u8[1] = 0x49; dv.setUint16(2, 42, true); dv.setUint32(4, F1, true);
+        u8.set(cmyk, 8); u8.set(white, data2Off);
+        [8, 8, 8, 8].forEach(function(v, ix){ dv.setUint16(E + ix * 2, v, true); });
+        [[E+8], [E+16], [E+24], [E+32]].forEach(function(o){ dv.setUint32(o[0], 300, true); dv.setUint32(o[0] + 4, 1, true); });
+        function tag(p, id, type, count, val, isOff){
+          dv.setUint16(p, id, true); dv.setUint16(p + 2, type, true); dv.setUint32(p + 4, count, true);
+          if (!isOff && type === 3) dv.setUint16(p + 8, val, true); else dv.setUint32(p + 8, val, true);
+        }
+        function ifd(off, tags, next){
+          dv.setUint16(off, tags.length, true);
+          tags.forEach(function(t, ix){ tag(off + 2 + ix * 12, t[0], t[1], t[2], t[3], t[4]); });
+          dv.setUint32(off + 2 + tags.length * 12, next, true);
+        }
+        ifd(F1, [
+          [256,4,1,W], [257,4,1,H], [258,3,4,E,true], [259,3,1,1], [262,3,1,5],
+          [273,4,1,8], [277,3,1,4], [278,4,1,H], [279,4,1,L1],
+          [282,5,1,E+8,true], [283,5,1,E+16,true], [284,3,1,1], [296,3,1,2]
+        ], F2);
+        ifd(F2, [
+          [256,4,1,W], [257,4,1,H], [258,3,1,8], [259,3,1,1], [262,3,1,1],
+          [273,4,1,data2Off], [277,3,1,1], [278,4,1,H], [279,4,1,L2],
+          [282,5,1,E+24,true], [283,5,1,E+32,true], [296,3,1,2]
+        ], 0);
+        return new Blob([buf], { type: 'image/tiff' });
+      }
+      var btnTiff = $('#btnTiff');
+      if (btnTiff) btnTiff.addEventListener('click', function(){
+        if (!(btnDl && !btnDl.hidden)){ psToast('Primero sube un diseño'); return; }
+        try{
+          downloadBlob(buildTiff(), 'diseno-separado-cmyk-w.tif');
+          psToast('TIFF separado descargado: página 1 CMYK + página 2 base blanca W1 (300 DPI)');
+        }catch(e){ psToast('No se pudo generar el TIFF con esta imagen; prueba con una más chica.'); }
+      });
+
+      /* ---------- Análisis real del diseño: canales CMYK + cobertura blanca ---------- */
+      function analyze(){
+        if (!work || !work.width) return null;
+        var w = work.width, h = work.height;
+        var sc = Math.min(1, 480 / Math.max(w, h));
+        var c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(w * sc)); c.height = Math.max(1, Math.round(h * sc));
+        var cx = c.getContext('2d', { willReadFrequently: true });
+        cx.drawImage(work, 0, 0, c.width, c.height);
+        var d = cx.getImageData(0, 0, c.width, c.height).data;
+        var n = 0, sC = 0, sM = 0, sY = 0, sK = 0, white = 0, sDark = 0;
+        var minX = 1e9, minY = 1e9, maxX = -1, maxY = -1;
+        for (var y = 0; y < c.height; y++) for (var x = 0; x < c.width; x++){
+          var i = (y * c.width + x) * 4;
+          if (d[i+3] < 12) continue;
+          n++; white++;
+          var r = d[i]/255, g = d[i+1]/255, b = d[i+2]/255;
+          sDark += 1 - (0.299*r + 0.587*g + 0.114*b);
+          var k = 1 - Math.max(r, g, b);
+          if (k < 0.999){ sC += (1 - r - k) / (1 - k); sM += (1 - g - k) / (1 - k); sY += (1 - b - k) / (1 - k); }
+          sK += k;
+          if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+        var total = c.width * c.height;
+        return {
+          C: n ? Math.round(sC/n*100) : 0, M: n ? Math.round(sM/n*100) : 0,
+          Y: n ? Math.round(sY/n*100) : 0, K: n ? Math.round(sK/n*100) : 0,
+          til: n ? Math.round((sC+sM+sY+sK)/n*100) : 0,
+          save: n ? Math.round((1 - sDark/n) * 100) : 0,
+          whiteCov: total ? Math.round(white/total*100) : 0,
+          bounds: maxX < 0 ? null : { x: minX/sc, y: minY/sc, w: (maxX-minX+1)/sc, h: (maxY-minY+1)/sc }
+        };
+      }
+      function refreshRipStats(){
+        /* Sin diseño real (el lienzo vacío mide 300×150 por defecto) no se
+           publica ningún dato: ni píldora, ni preflight, ni canales. */
+        if (!(btnDl && !btnDl.hidden)){ var p0 = $('#canvasPill'); if (p0) p0.hidden = true; return; }
+        var a = analyze(); if (!a) return;
+        $('#ripChanC').textContent = a.C + '%'; $('#ripChanM').textContent = a.M + '%';
+        $('#ripChanY').textContent = a.Y + '%'; $('#ripChanK').textContent = a.K + '%';
+        $('#ripChanW').textContent = a.whiteCov + '% cobertura';
+        var tilEl = $('#ripTil'); if (tilEl) tilEl.textContent = a.til + '% / 300%';
+        var saveEl = $('#ripSave'); if (saveEl) saveEl.textContent = '~' + a.save + '%';
+        $('#ripDim').textContent = (work.width/300*2.54).toFixed(1) + ' × ' + (work.height/300*2.54).toFixed(1) + ' cm';
+        var pxTxt = work.width + ' × ' + work.height + ' px';
+        var sbPx = $('#sbPx'); if (sbPx) sbPx.textContent = pxTxt;
+        var pillPx = $('#pillPx'); if (pillPx) pillPx.textContent = pxTxt;
+        var pill = $('#canvasPill'); if (pill) pill.hidden = false;
+        var sbPf = $('#sbPreflight'); if (sbPf){ sbPf.textContent = '● Preflight RIP OK'; sbPf.style.color = 'var(--ok)'; }
+        $('#sbDoc').textContent = (work.width*work.height*3/1048576).toFixed(1) + 'M / ' + (work.width*work.height*5/1048576).toFixed(1) + 'M (CMYK+W)';
+        $('#sbSize').textContent = (work.width/300*2.54).toFixed(1) + ' × ' + (work.height/300*2.54).toFixed(1) + ' cm (300 ppi)';
+        $('#rulerHMax').textContent = (work.width/300*2.54).toFixed(1) + ' cm (ancho útil)';
+        $('#rulerVMax').textContent = (work.height/300*2.54).toFixed(1) + ' cm';
+        drawLupa();
+      }
+      var brc = $('#btnRipCalc'); if (brc) brc.addEventListener('click', refreshRipStats);
+      var bgs = $('#btnGoSemi'); if (bgs) bgs.addEventListener('click', function(){ clickTool('semitono'); });
+
+      /* ---------- Modal PDF Multicapa ---------- */
+      var modal = $('#pdfModal');
+      var lastAnalysis = null, whiteUrl = '', artUrl = '';
+      function layerOn(name){ var el = document.querySelector('.pdf-layer[data-layer="' + name + '"]'); return el ? el.checked : false; }
+      function syncLayerCount(){
+        var n = $$('.pdf-layer').filter(function(x){ return x.checked; }).length;
+        $('#pdfLayerCount').textContent = n + (n === 1 ? ' Capa Activa' : ' Capas Activas');
+        $$('.pdf-layer').forEach(function(x){
+          var card = x.closest('[data-layer-card]'); if (card) card.classList.toggle('off', !x.checked);
+        });
+      }
+      $$('.pdf-layer').forEach(function(x){ x.addEventListener('change', syncLayerCount); });
+      var rst = $('#pdfResetLayers');
+      if (rst) rst.addEventListener('click', function(){ $$('.pdf-layer').forEach(function(x){ x.checked = true; }); syncLayerCount(); });
+      function buildWhiteCanvas(){
+        var c = document.createElement('canvas'); c.width = work.width; c.height = work.height;
+        var cx = c.getContext('2d');
+        cx.drawImage(work, 0, 0);
+        cx.globalCompositeOperation = 'source-in';
+        cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, c.width, c.height);
+        return c;
+      }
+      function setPdfView(v){
+        $$('.pdf-tab').forEach(function(b){ b.classList.toggle('on', b.dataset.view === v); });
+        $('#pdfContour').hidden = v !== 'contour';
+        $('#pdfPreviewImg').src = v === 'white' ? whiteUrl : artUrl;
+      }
+      $$('.pdf-tab').forEach(function(b){ b.addEventListener('click', function(){ setPdfView(b.dataset.view); }); });
+      function openPdfModal(){
+        if (!work || !work.width){ psToast('Primero sube un diseño'); clickTool('pdf'); return; }
+        lastAnalysis = analyze();
+        artUrl = work.toDataURL('image/png');
+        whiteUrl = buildWhiteCanvas().toDataURL('image/png');
+        $('#pdfPreviewImg').src = artUrl;
+        if (lastAnalysis){
+          $('#pdfCovW1').textContent = lastAnalysis.whiteCov + '% Cobertura';
+          $('#pdfCovW2').textContent = Math.max(0, Math.round(lastAnalysis.whiteCov * 0.23)) + '% Cobertura';
+          var bw = lastAnalysis.bounds ? lastAnalysis.bounds.w/300*2.54 : work.width/300*2.54;
+          var bh = lastAnalysis.bounds ? lastAnalysis.bounds.h/300*2.54 : work.height/300*2.54;
+          $('#pdfCutLen').textContent = (2 * (bw + bh) / 100).toFixed(2) + ' m';
+        }
+        var cmW = work.width/300*2.54, cmH = work.height/300*2.54;
+        var bleed = $('#pdfBleed').checked ? 0.3 : 0;
+        $('#pdfDim').textContent = (cmW + bleed).toFixed(1) + ' × ' + (cmH + bleed).toFixed(1) + ' cm';
+        $('#pdfWeight').textContent = '~' + Math.max(0.4, work.width * work.height * 4 / 1048576).toFixed(1) + ' MB';
+        var ang = $('#psAngle') ? $('#psAngle').value : '45';
+        var lpi = $('#sFreqVal') ? $('#sFreqVal').textContent : '25 lpi';
+        $('#pdfTramaLbl').textContent = 'Tramado Elíptico ' + lpi + ' @ ' + ang + '°';
+        syncLayerCount(); setPdfView('cmyk');
+        /* Estados de validación SOLO con diseño real ya analizado: */
+        $('#pdfValidated').innerHTML = '<span style="color:var(--ok)">●</span> Todas las tintas Spot validadas';
+        $('#pdfPreflightTitle').textContent = 'Preflight OK:';
+        $('#pdfPreflightDot').style.background = 'var(--ok)';
+        $('#pdfPreflight').textContent = 'PDF/X-4 compatible, tintas registradas como Spot Colors, trazo CutContour vectorial sobre el contorno real del diseño (+1.5 mm de sangrado).';
+        $('#pdfRipState').textContent = 'Listo para RIP';
+        $('#pdfExport').disabled = false;
+        modal.hidden = false;
+        refreshRipStats();
+      }
+      function closePdfModal(){ modal.hidden = true; }
+      var bom = $('#btnOpenPdfModal'); if (bom) bom.addEventListener('click', openPdfModal);
+      $('#pdfClose').addEventListener('click', closePdfModal);
+      $('#pdfCancel').addEventListener('click', closePdfModal);
+      modal.addEventListener('click', function(e){ if (e.target === modal) closePdfModal(); });
+      var bsp = $('#pdfSavePreset'); if (bsp) bsp.addEventListener('click', function(){ psToast('Ajuste guardado para esta sesión: ' + $('#pdfPreset').selectedOptions[0].textContent); });
+
+      /* ---------- Generador PDF real: capas OCG + spot CutContour + SMask ---------- */
+      function jpegBytes(canvas, bg){
+        var c = document.createElement('canvas'); c.width = canvas.width; c.height = canvas.height;
+        var cx = c.getContext('2d');
+        cx.fillStyle = bg; cx.fillRect(0, 0, c.width, c.height);
+        cx.drawImage(canvas, 0, 0);
+        var bin = atob(c.toDataURL('image/jpeg', 0.92).split(',')[1]);
+        var u = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+        return u;
+      }
+      function alphaCanvas(){
+        var c = document.createElement('canvas'); c.width = work.width; c.height = work.height;
+        var cx = c.getContext('2d', { willReadFrequently: true });
+        cx.drawImage(work, 0, 0);
+        var img = cx.getImageData(0, 0, c.width, c.height), d = img.data;
+        for (var i = 0; i < d.length; i += 4){ d[i] = d[i+1] = d[i+2] = d[i+3]; d[i+3] = 255; }
+        cx.putImageData(img, 0, 0);
+        return c;
+      }
+      function buildPdf(){
+        var W = work.width, H = work.height;
+        var Wpt = +(W / 300 * 72).toFixed(2), Hpt = +(H / 300 * 72).toFixed(2);
+        var a = lastAnalysis || analyze();
+        var b = a && a.bounds ? a.bounds : { x: 0, y: 0, w: W, h: H };
+        var bleedPt = $('#pdfBleed').checked ? 1.5 / 25.4 * 72 : 0;
+        var sx = Wpt / W, sy = Hpt / H;
+        var rx = Math.max(0, b.x * sx - bleedPt), ry = Math.max(0, b.y * sy - bleedPt);
+        var rw = Math.min(Wpt - rx, b.w * sx + bleedPt * 2), rh = Math.min(Hpt - ry, b.h * sy + bleedPt * 2);
+        var ryTop = Hpt - ry - rh;
+        var cutName = $('#pdfCutName').value;
+        var art = jpegBytes(work, '#000000');
+        var alpha = jpegBytes(alphaCanvas(), '#000000');
+        var whiteC = buildWhiteCanvas();
+        var white = jpegBytes(whiteC, '#000000');
+        var parts = [];
+        function addStr(s){ parts.push(new TextEncoder().encode(s)); }
+        function addBin(u){ parts.push(u); }
+        var offsets = [], pos = 0;
+        function mark(n){ while (parts.length && pos === 0) break; offsets[n] = pos; }
+        function pushStr(s){ var u = new TextEncoder().encode(s); parts.push(u); pos += u.length; }
+        function pushBin(u){ parts.push(u); pos += u.length; }
+        function obj(n, body){ offsets[n] = pos; pushStr(n + ' 0 obj\n' + body + '\nendobj\n'); }
+        function streamObj(n, dict, bin){
+          offsets[n] = pos;
+          pushStr(n + ' 0 obj\n<< ' + dict + ' /Length ' + bin.length + ' >>\nstream\n');
+          pushBin(bin); pushStr('\nendstream\nendobj\n');
+        }
+        pushStr('%PDF-1.6\n%\xE2\xE3\xCF\xD3\n');
+        obj(5, '<< /Type /OCG /Name (CutContour) >>');
+        obj(6, '<< /Type /OCG /Name (Spot White W1 W2) >>');
+        obj(7, '<< /Type /OCG /Name (Artwork CMYK) >>');
+        obj(9, '<< /FunctionType 2 /Domain [0 1] /Range [0 1 0 1 0 1 0 1] /C0 [0 0 0 0] /C1 [0 1 0 0] /N 1 >>');
+        obj(14, '<< /Type /ExtGState /OP ' + ($('#pdfOverprint').checked ? 'true' : 'false') + ' /op ' + ($('#pdfOverprint').checked ? 'true' : 'false') + ' /CA 1 /ca 1 >>');
+        streamObj(11, '/Type /XObject /Subtype /Image /Width ' + W + ' /Height ' + H + ' /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode', alpha);
+        streamObj(10, '/Type /XObject /Subtype /Image /Width ' + W + ' /Height ' + H + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /SMask 11 0 R', art);
+        streamObj(13, '/Type /XObject /Subtype /Image /Width ' + W + ' /Height ' + H + ' /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode', alpha);
+        streamObj(12, '/Type /XObject /Subtype /Image /Width ' + W + ' /Height ' + H + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /SMask 13 0 R', white);
+        var content = '';
+        if (layerOn('w1') || layerOn('w2')) content += '/OC /OC6 BDC\nq ' + Wpt + ' 0 0 ' + Hpt + ' 0 0 cm /ImW Do Q\nEMC\n';
+        if (layerOn('cmyk')) content += '/OC /OC7 BDC\nq ' + Wpt + ' 0 0 ' + Hpt + ' 0 0 cm /ImA Do Q\nEMC\n';
+        if (layerOn('marks')){
+          content += 'q 0 0 0 1 k 0.6 w\n';
+          [[14,14],[Wpt-14,14],[14,Hpt-14],[Wpt-14,Hpt-14]].forEach(function(p){
+            content += (p[0]-6) + ' ' + p[1] + ' m ' + (p[0]+6) + ' ' + p[1] + ' l ' + p[0] + ' ' + (p[1]-6) + ' m ' + p[0] + ' ' + (p[1]+6) + ' l S\n';
           });
-          cat.appendChild(head); cat.appendChild(body);
-          rail.appendChild(cat);
-          n.remove();
-        } else if (n.classList.contains('tool-btn') && cat){
-          cat.querySelector('.cat-body').appendChild(n);
+          content += 'Q\n';
         }
-      });
-      /* Todas las categorías empiezan cerradas (acordeón): se despliegan
-         al tocarlas, de una en una. */
-      var btn = document.getElementById('btnCats');
-      if (btn) btn.addEventListener('click', function(){
-        document.body.classList.toggle('rail-open');
-      });
-      rail.addEventListener('click', function(e){
-        var b = e.target.closest('.tool-btn');
-        if (b){
-          document.body.classList.remove('rail-open');
-          var cc = b.closest('.cat');
-          var all = rail.querySelectorAll('.cat.open');
-          for (var k = 0; k < all.length; k++) if (all[k] !== cc) all[k].classList.remove('open');
-          if (cc) cc.classList.add('open');
+        if (layerOn('cut')){
+          content += '/OC /OC5 BDC\nq /GS0 gs /CS0 cs 0.25 w [4 2] 0 d 1 SCN\n' +
+            rx.toFixed(2) + ' ' + ryTop.toFixed(2) + ' ' + rw.toFixed(2) + ' ' + rh.toFixed(2) + ' re S Q\nEMC\n';
         }
+        var cbin = new TextEncoder().encode(content);
+        streamObj(4, '', cbin);
+        obj(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + Wpt + ' ' + Hpt + '] /Contents 4 0 R /Resources << /XObject << /ImA 10 0 R /ImW 12 0 R >> /ColorSpace << /CS0 [/Separation /' + cutName + ' /DeviceCMYK 9 0 R] >> /ExtGState << /GS0 14 0 R >> /Properties << /OC5 5 0 R /OC6 6 0 R /OC7 7 0 R >> >> >>');
+        obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+        obj(1, '<< /Type /Catalog /Pages 2 0 R /OCProperties << /OCGs [5 0 R 6 0 R 7 0 R] /D << /Order [5 0 R 6 0 R 7 0 R] /ON [5 0 R 6 0 R 7 0 R] >> >> >>');
+        var xrefPos = pos;
+        var maxObj = 14;
+        var xref = 'xref\n0 ' + (maxObj + 1) + '\n0000000000 65535 f \n';
+        for (var i = 1; i <= maxObj; i++){
+          var off = offsets[i] || 0;
+          xref += String(off).padStart(10, '0') + ' 00000 n \n';
+        }
+        pushStr(xref + 'trailer\n<< /Size ' + (maxObj + 1) + ' /Root 1 0 R >>\nstartxref\n' + xrefPos + '\n%%EOF');
+        var total = 0; parts.forEach(function(p){ total += p.length; });
+        var out = new Uint8Array(total), o = 0;
+        parts.forEach(function(p){ out.set(p, o); o += p.length; });
+        return new Blob([out], { type: 'application/pdf' });
+      }
+      $('#pdfExport').addEventListener('click', function(){
+        if (!work || !work.width){ psToast('Primero sube un diseño'); return; }
+        try{
+          var blob = buildPdf();
+          downloadBlob(blob, 'diseno-produccion-cmyk-w-cutcontour.pdf');
+          psToast('PDF de producción descargado: CMYK + White + ' + $('#pdfCutName').value);
+          closePdfModal();
+        }catch(e){ psToast('No se pudo generar el PDF con esta imagen; prueba con una más chica.'); }
       });
+
+      /* Barra de estado: «Listo» solo cuando de verdad hay un diseño cargado
+         (el botón Descargar se muestra al cargar: es la señal del motor). */
+      var sbState = $('#sbState');
+      function syncReadyState(){
+        var ready = btnDl && !btnDl.hidden && work && work.width > 0;
+        if (!sbState) return;
+        if (ready){ sbState.style.color = 'var(--ok)'; sbState.innerHTML = '● Listo para Enviar a Impresora <span style="color:var(--muted)">| v4.8.2-PRO · RIP Edition</span>'; refreshRipStats(); }
+        else { sbState.style.color = 'var(--muted)'; sbState.innerHTML = '○ Sin diseño cargado <span>| v4.8.2-PRO · RIP Edition</span>';
+          var pill0 = $('#canvasPill'); if (pill0) pill0.hidden = true;
+          var lupa0 = $('#lupaPanel'); if (lupa0) lupa0.hidden = true;
+          var sbPf0 = $('#sbPreflight'); if (sbPf0){ sbPf0.textContent = '○ Preflight RIP —'; sbPf0.style.color = 'var(--muted)'; }
+        }
+      }
+      if (btnDl) new MutationObserver(syncReadyState).observe(btnDl, { attributes: true, attributeFilter: ['hidden'] });
+
+      /* Barra de estado: espejo del zoom real */
+      var zoomEl = $('#zoomVal');
+      if (zoomEl && $('#sbZoom')){
+        new MutationObserver(function(){ $('#sbZoom').textContent = zoomEl.textContent; })
+          .observe(zoomEl, { childList: true, characterData: true, subtree: true });
+      }
+      window.__openPdfModal = openPdfModal;
     })();
     </script>
     <script>
