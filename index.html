@@ -529,9 +529,142 @@
            se necesita para sublimación y transfer. */
         #printArea.mirror img{ transform:scaleX(-1); }
       }
+
+      /* ---------- Móvil simple (SOLO celular, máx 820px) ----------
+         En PC la app queda EXACTAMENTE igual (Pro Studio). En el celular:
+         fuera la barra de menús, la de opciones, la de acciones y la de
+         estado; el lienzo ocupa casi toda la pantalla; las herramientas
+         van en una barra inferior con botones grandes para el dedo; el
+         panel de opciones es una hoja que sube desde abajo solo cuando
+         se elige una herramienta (y se cierra con su ✕); y todo lo de
+         las barras de escritorio vive en un solo botón «Menú». Nada se
+         elimina del DOM: los botones móviles disparan los originales. */
+      .m-topbar, .sheet-bar{ display:none; }
+      @media screen and (max-width:820px){
+        .ps-menubar, .ps-options, .topbar, .statusbar, .doc-tabs,
+        .ruler-h, .ruler-v{ display:none !important; }
+
+        /* Barra superior móvil: menú + ajustes + subir */
+        .m-topbar{
+          display:flex; align-items:center; gap:.5rem; flex:none; position:relative; z-index:45;
+          padding:.45rem .6rem; background:var(--panel2); border-bottom:1px solid var(--line);
+        }
+        .m-topbar .spacer{ flex:1; }
+        .m-topbar .btn{ min-height:2.9rem; padding:.5rem .8rem; font-size:.92rem; border-radius:11px; }
+        .m-menu{
+          position:absolute; top:calc(100% + 6px); left:.5rem; right:.5rem; z-index:46;
+          background:var(--panel); border:1px solid var(--line); border-radius:14px;
+          box-shadow:var(--shadow); padding:.45rem; max-height:74dvh; overflow-y:auto;
+        }
+        .m-menu-sec{
+          font-size:.7rem; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
+          color:var(--muted); padding:.6rem .6rem .25rem;
+        }
+        .m-menu button{
+          display:flex; align-items:center; width:100%; text-align:left; border:0; background:transparent;
+          color:var(--ink); font-weight:600; font-size:.98rem; min-height:3.1rem;
+          padding:.6rem .6rem; border-radius:10px;
+        }
+        .m-menu button:active{ background:var(--panel2); }
+        .m-menu button.on{ color:var(--accent); }
+        .m-menu button:disabled{ opacity:.38; }
+
+        /* Lienzo protagonista, herramientas abajo */
+        .layout, body.no-tool .layout{
+          grid-template-columns:minmax(0,1fr);
+          grid-template-rows:minmax(0,1fr) auto;
+        }
+        .stage-col{ grid-column:1; grid-row:1; }
+        .stage-head{ padding:.35rem .55rem; }
+        .zoomwrap input[type="range"]{ width:64px; }
+        .stage-scroll{ padding:10px; }
+        .rail{
+          grid-column:1; grid-row:2; flex-direction:row; align-items:center;
+          height:calc(70px + env(safe-area-inset-bottom, 0px));
+          overflow-x:auto; overflow-y:hidden; border-right:0; border-top:1px solid var(--line);
+          padding:.35rem .5rem calc(.35rem + env(safe-area-inset-bottom, 0px));
+          gap:.35rem; scrollbar-width:none;
+        }
+        .rail::-webkit-scrollbar{ display:none; }
+        .rail-group{
+          width:0; height:36px; border-top:0; border-left:1px solid var(--line);
+          margin:0 .2rem; align-self:center;
+        }
+        .tool-btn{
+          width:62px; height:56px; min-height:56px; flex-direction:column; gap:3px;
+          font-size:.56rem; line-height:1.08; text-align:center; border-radius:12px; padding:.3rem .12rem;
+        }
+        .tool-btn svg{ width:21px; height:21px; }
+
+        /* Panel de opciones: hoja que sube desde abajo */
+        .panel-col{
+          position:fixed; left:0; right:0; top:auto; z-index:55;
+          bottom:calc(70px + env(safe-area-inset-bottom, 0px));
+          max-height:72dvh; border-top:1px solid var(--line); border-left:0;
+          border-radius:16px 16px 0 0; box-shadow:0 -12px 32px rgba(0,0,0,.55);
+          transition:transform .3s ease;
+        }
+        body.sheet-closed .panel-col{ transform:translateY(calc(100% + 90px)); pointer-events:none; }
+        .sheet-bar{
+          display:flex; align-items:center; gap:.6rem; position:sticky; top:0; z-index:2;
+          background:var(--panel2); padding:.65rem .8rem .5rem; border-bottom:1px solid var(--line);
+          border-radius:16px 16px 0 0;
+        }
+        .sheet-bar .grab{
+          position:absolute; top:5px; left:50%; transform:translateX(-50%);
+          width:38px; height:4px; border-radius:99px; background:var(--line);
+        }
+        .sheet-bar .ttl{ flex:1; font-weight:800; font-size:.98rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .sheet-bar .sheet-x{
+          flex:none; width:2.6rem; height:2.6rem; min-height:2.6rem; border-radius:10px;
+          border:1px solid var(--line); background:var(--panel); color:var(--ink);
+          display:inline-flex; align-items:center; justify-content:center;
+        }
+        .sheet-bar .sheet-x svg{ width:18px; height:18px; }
+        .panel{ padding:.85rem .95rem 1.1rem; }
+        .toast{ bottom:calc(84px + env(safe-area-inset-bottom, 0px)); }
+        @media (prefers-reduced-motion: reduce){ .panel-col{ transition:none; } }
+      }
     </style>
   </head>
   <body>
+    <!-- Móvil · barra superior simple: un solo botón de menú (solo celular) -->
+    <div class="m-topbar">
+      <button class="btn" id="mMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        Menú
+      </button>
+      <div class="spacer"></div>
+      <button class="btn" id="mOptionsBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2.2"/><circle cx="8" cy="16" r="2.2"/></svg>
+        Ajustes
+      </button>
+      <button class="btn primary" id="mUploadBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0 4 4m-4-4L8 8"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+        Subir diseño
+      </button>
+      <div class="m-menu" id="mMenu" hidden role="menu" aria-label="Menú principal">
+        <div class="m-menu-sec">Diseño</div>
+        <button type="button" data-proxy="btnUploadMain">Subir diseño</button>
+        <button type="button" data-proxy="btnUndo">Deshacer</button>
+        <button type="button" data-proxy="btnReset">Restablecer</button>
+        <div class="m-menu-sec">Guardar y salida</div>
+        <button type="button" data-proxy="btnDownload">Descargar PNG</button>
+        <button type="button" data-proxy="btnPdfTop">PDF Multicapa</button>
+        <button type="button" data-proxy="btnRipTop">Procesar RIP</button>
+        <button type="button" data-proxy="btnPrintNormal">Imprimir normal</button>
+        <button type="button" data-proxy="btnPrintMirror">Imprimir en espejo</button>
+        <div class="m-menu-sec">Vista del semitono</div>
+        <button type="button" data-proxy="viewSplitBtn">Split A/B</button>
+        <button type="button" data-proxy="viewFullBtn">Solo Tramado</button>
+        <button type="button" data-proxy="viewWhiteBtn">Máscara Base W</button>
+        <button type="button" data-proxy="viewSingleBtn">Resultado</button>
+        <button type="button" data-proxy="btnRulersTop">Mostrar / ocultar reglas</button>
+        <button type="button" data-proxy="btnFitTop">Encajar en pantalla</button>
+        <div class="m-menu-sec">Ayuda</div>
+        <button type="button" id="mHelpBtn">Ayuda</button>
+      </div>
+    </div>
     <!-- Pro Studio · barra de menús -->
     <header class="ps-menubar">
       <div class="ps-brand"><span class="tag">DTF</span><span>Studio Pro</span></div>
@@ -777,6 +910,14 @@
 
       <!-- Control panels -->
       <div class="panel-col">
+        <!-- Móvil · asa y cierre de la hoja de opciones (solo celular) -->
+        <div class="sheet-bar">
+          <span class="grab" aria-hidden="true"></span>
+          <span class="ttl" id="sheetTitle">Opciones</span>
+          <button class="sheet-x" id="sheetClose" type="button" aria-label="Cerrar opciones">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
+          </button>
+        </div>
 
         <section class="panel" data-panel="fondo">
           
@@ -8061,6 +8202,83 @@
           navigator.serviceWorker.register('./sw.js').catch(function () { /* sin SW la app sigue funcionando en línea */ });
         });
       }
+    </script>
+    <script>
+    'use strict';
+    /* ============ Móvil simple (capa añadida: no toca el motor ni el PC) ============
+       El botón «Menú» y la hoja de opciones solo disparan los controles
+       originales, que siguen en el DOM aunque en el celular no se vean:
+       así no se pierde ninguna función de la versión de escritorio. */
+    (function(){
+      function $(s){ return document.querySelector(s); }
+      var menuBtn = $('#mMenuBtn'), menu = $('#mMenu');
+      function mToast(msg){
+        var t = $('#toast'); if (!t) return;
+        t.textContent = msg; t.classList.add('show');
+        setTimeout(function(){ t.classList.remove('show'); }, 2600);
+      }
+      function closeMenu(){ if (menu) menu.hidden = true; if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false'); }
+      /* Al abrir, el menú refleja el estado real: lo que en escritorio
+         está oculto o desactivado (sin diseño cargado) aquí también. */
+      function syncMenu(){
+        if (!menu) return;
+        Array.prototype.forEach.call(menu.querySelectorAll('[data-proxy]'), function(item){
+          var t = document.getElementById(item.getAttribute('data-proxy'));
+          if (!t){ item.disabled = true; return; }
+          item.disabled = !!t.disabled || !!t.hidden;
+          item.classList.toggle('on', t.classList.contains('on'));
+        });
+      }
+      if (menuBtn && menu){
+        menuBtn.addEventListener('click', function(e){
+          e.stopPropagation();
+          if (menu.hidden){ syncMenu(); menu.hidden = false; menuBtn.setAttribute('aria-expanded', 'true'); }
+          else closeMenu();
+        });
+        document.addEventListener('click', function(e){
+          if (!menu.hidden && !menu.contains(e.target)) closeMenu();
+        });
+        menu.addEventListener('click', function(e){
+          var help = e.target.closest('#mHelpBtn');
+          if (help){
+            closeMenu();
+            var h = document.querySelector('.ps-menu button[data-menu="ayuda"]');
+            if (h) h.click();
+            return;
+          }
+          var item = e.target.closest('[data-proxy]');
+          if (!item || item.disabled) return;
+          var t = document.getElementById(item.getAttribute('data-proxy'));
+          closeMenu();
+          if (t) t.click();
+        });
+      }
+      var up = $('#mUploadBtn');
+      if (up) up.addEventListener('click', function(){ var b = $('#btnUploadMain'); if (b) b.click(); });
+
+      /* Hoja de opciones: se abre al tocar una herramienta de la barra
+         inferior y se cierra con su ✕ sin perder la herramienta activa;
+         «Ajustes» la vuelve a abrir. El título es el de la herramienta. */
+      function syncSheetTitle(){
+        var h2 = document.querySelector('.panel.active h2');
+        var ttl = $('#sheetTitle');
+        if (ttl && h2) ttl.textContent = h2.textContent.trim();
+      }
+      var rail = $('#rail');
+      if (rail) rail.addEventListener('click', function(){
+        document.body.classList.remove('sheet-closed');
+        syncSheetTitle();
+      });
+      var close = $('#sheetClose');
+      if (close) close.addEventListener('click', function(){ document.body.classList.add('sheet-closed'); });
+      var opt = $('#mOptionsBtn');
+      if (opt) opt.addEventListener('click', function(){
+        if (document.body.classList.contains('no-tool')){ mToast('Elige una herramienta en la barra de abajo'); return; }
+        document.body.classList.remove('sheet-closed');
+        syncSheetTitle();
+      });
+      syncSheetTitle();
+    })();
     </script>
   </body>
 </html>
