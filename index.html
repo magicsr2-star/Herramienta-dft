@@ -425,6 +425,9 @@
       .stage-head{ background:var(--panel2); }
       .rail{ background:var(--panel2); }
       .panel-col{ background:var(--panel2); }
+      /* Botón de scroll de la hoja: solo existe en el celular (su
+         aspecto y posición viven en el bloque max-width:820px). */
+      .sheet-wheel{ display:none; }
       .panel{ background:transparent; }
       .statusbar{
         flex:none; display:flex; align-items:center; flex-wrap:wrap; gap:.35rem .9rem; min-height:24px; padding:.25rem .8rem;
@@ -571,6 +574,35 @@
       .canvas-pill .ok{ color:var(--ok); }
       .canvas-pill .sep{ color:#4a505e; }
       .canvas-pill b{ color:#fff; font-weight:600; }
+      /* Zoom flotante: solo celular (en PC el zoom vive en la cabecera).
+         Pastilla chica sobre el lienzo, encima de la píldora de telemetría,
+         para acercar/alejar sin depender solo del pellizco — que en la
+         vista Split A/B se peleaba con el tirador de la línea. Sus botones
+         disparan el zoom real (los mismos #zoomOut/#zoomIn/#zoomFit) y el
+         porcentaje es espejo de #zoomVal; tocar el % encaja (Ver entero).
+         Se muestra solo con diseño cargado: su visibilidad espeja la de
+         la píldora del lienzo (#canvasPill). */
+      .zoom-pill{ display:none; }
+      @media (max-width:820px){
+        .zoom-pill{
+          position:absolute; right:10px; bottom:56px; z-index:7;
+          display:flex; align-items:center; gap:2px;
+          background:rgba(27,30,36,.96); border:1px solid var(--line); border-radius:999px;
+          padding:3px; box-shadow:var(--shadow);
+        }
+        .zoom-pill[hidden]{ display:none !important; }
+        .zoom-pill button{
+          border:0; background:transparent; color:#e6e8f0; border-radius:999px;
+          width:40px; height:40px; min-height:40px; padding:0; flex:none;
+          display:flex; align-items:center; justify-content:center;
+          font-size:20px; line-height:1; touch-action:manipulation; cursor:pointer;
+        }
+        .zoom-pill button:active{ background:#2c303a; }
+        .zoom-pill .zp-val{
+          width:auto; min-width:54px; padding:0 .3rem;
+          font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600;
+        }
+      }
       .curve-box{ background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:.5rem .6rem; }
       .curve-box svg{ width:100%; height:auto; display:block; }
       .choke-ctl{ display:flex; align-items:center; background:var(--ps-input); border:1px solid var(--line); border-radius:7px; overflow:hidden; }
@@ -635,6 +667,13 @@
         }
         .m-topbar .spacer{ flex:1; }
         .m-topbar .btn{ min-height:2.9rem; padding:.5rem .8rem; font-size:.92rem; border-radius:11px; }
+        /* Barra superior limpia: solo «Menú». «Ajustes» y «Subir diseño»
+           salen de la barra para dar aire al área de trabajo, pero los
+           botones quedan en el DOM (ocultos) porque el Menú y la
+           pantalla de inicio los siguen disparando: «Ajustes» vive como
+           entrada del Menú y «Subir diseño» ya está en el Menú y en
+           Inicio con el botón +. */
+        .m-topbar #mOptionsBtn, .m-topbar #mUploadBtn{ display:none; }
         .m-menu{
           position:absolute; top:calc(100% + 6px); left:.5rem; right:.5rem; z-index:46;
           background:var(--panel); border:1px solid var(--line); border-radius:14px;
@@ -667,7 +706,12 @@
         }
         .stage-col{ grid-column:1; grid-row:1; }
         .stage-head{ padding:.35rem .55rem; }
-        .zoomwrap input[type="range"]{ width:64px; }
+        /* Sin fila de Zoom en el celular: el zoom se hace con el gesto
+           de pellizco sobre el lienzo y «Ver entero» queda en el Menú
+           («Encajar en pantalla») y con doble toque sobre el diseño.
+           La línea del tamaño (px · cm a 300 DPI) se queda donde está.
+           En PC el zoom sigue en la cabecera, como siempre. */
+        .stage-head .zoomwrap{ display:none; }
         .stage-scroll{ padding:10px; }
         .rail{
           grid-column:1; grid-row:2; flex-direction:row; align-items:center;
@@ -739,6 +783,40 @@
         .sheet-strip .ss-label{ flex:none; max-width:38%; font-weight:700; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .sheet-strip input[type="range"]{ flex:1; min-width:0; accent-color:var(--accent); min-height:2rem; margin:0; touch-action:none; }
         .sheet-strip .ss-val{ flex:none; min-width:2.2rem; text-align:right; color:var(--accent); font-family:"IBM Plex Mono", monospace; font-weight:600; font-size:.9rem; }
+        /* Botón de scroll tipo mouse: pastilla vertical pequeña pegada
+           a la orilla derecha de la hoja, sobre el área de opciones.
+           Un toque sube o baja un paso entre perillas; mantener
+           presionado sigue moviendo, como la rueda del mouse. Con la
+           hoja CERRADA no se muestra. Con la hoja en TIRA la pastilla
+           se acuesta junto a la tira (ver abajo): ahí no desplaza
+           nada, cambia la perilla que la tira está mostrando, para
+           navegar entre las perillas de la herramienta viendo el
+           diseño sin abrir la hoja. */
+        .panel-col .sheet-wheel{
+          position:absolute; right:8px; top:50%; transform:translateY(-50%); z-index:3;
+          display:flex; flex-direction:column; align-items:center; gap:2px;
+          padding:4px; border-radius:999px; border:1px solid var(--line);
+          background:rgba(16,18,24,.94); box-shadow:0 4px 14px rgba(0,0,0,.5);
+        }
+        .sheet-wheel button{
+          width:30px; height:30px; min-height:30px; padding:0; border:0; border-radius:999px;
+          background:var(--panel); color:var(--ink); cursor:pointer;
+          display:flex; align-items:center; justify-content:center;
+          touch-action:none; -webkit-tap-highlight-color:transparent;
+        }
+        .sheet-wheel button svg{ width:16px; height:16px; flex:none; }
+        .sheet-wheel button:active{ background:var(--accent); color:#fff; }
+        .sheet-wheel button:disabled{ opacity:.28; cursor:default; }
+        .sheet-wheel .sw-dot{ width:4px; height:4px; border-radius:99px; background:var(--muted); flex:none; }
+        body.sheet-closed .sheet-wheel{ display:none; }
+        /* Hoja en tira: la pastilla se acuesta en la orilla derecha de
+           la fila de la tira, en horizontal, y la tira reserva ese
+           espacio a la derecha (has-stripnav) para que la pastilla no
+           tape el valor de la perilla que se está ajustando. */
+        body.sheet-mini .panel-col .sheet-wheel{
+          flex-direction:row; top:auto; bottom:5px; right:6px; transform:none;
+        }
+        body.sheet-mini.has-stripnav .sheet-strip{ padding-right:5.9rem; }
         body.sheet-drag .panel-col{ transition:transform .3s ease; }
         body.sheet-closed .panel-col{ transform:translateY(calc(100% + 90px)); pointer-events:none; }
         .sheet-bar{
@@ -752,6 +830,13 @@
           width:38px; height:4px; border-radius:99px; background:var(--line);
         }
         .sheet-bar .ttl{ flex:1; font-weight:800; font-size:.98rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        /* Sello de versión en la barra de la hoja: que en cualquier
+           video o captura se vea qué copia se está probando. */
+        .sheet-bar .ver-stamp{
+          flex:none; font-family:"IBM Plex Mono", monospace; font-weight:700; font-size:.8rem;
+          letter-spacing:.04em; color:var(--accent); border:1.5px solid var(--accent);
+          border-radius:999px; padding:.12rem .55rem; line-height:1.2;
+        }
         .sheet-bar .sheet-x{
           flex:none; width:2.6rem; height:2.6rem; min-height:2.6rem; border-radius:10px;
           border:1px solid var(--line); background:var(--panel); color:var(--ink);
@@ -998,6 +1083,13 @@
           font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase;
           color:#ff7a3d; margin-top:3px; white-space:nowrap;
         }
+        /* Sello de versión en Inicio: que en cualquier video o captura
+           se vea qué copia se está probando. */
+        .hm-head .ver-stamp{
+          margin-left:auto; flex:none; font-family:"IBM Plex Mono", monospace; font-weight:700;
+          font-size:13px; letter-spacing:.04em; color:#ff7a3d; border:1.5px solid #ff7a3d;
+          border-radius:999px; padding:.15rem .6rem; line-height:1.2;
+        }
         .hm-chips{
           display:flex; gap:.5rem; overflow-x:auto; scrollbar-width:none;
           padding:.6rem .75rem .2rem;
@@ -1135,6 +1227,7 @@
           <span class="hm-name">DTF <em>Studio</em></span>
           <span class="hm-sub">Herramientas DTF</span>
         </div>
+        <span class="ver-stamp" aria-label="Versión v58">v58</span>
       </header>
       <div class="hm-chips" aria-label="Accesos rápidos">
         <button type="button" class="hm-chip on" id="homeChipAll">Todos</button>
@@ -1269,6 +1362,7 @@
           <span class="bt"><strong>DTF Studio</strong><small>Herramientas DTF</small></span>
         </div>
         <button type="button" id="mHomeBtn">Pantalla de inicio</button>
+        <button type="button" id="mAjustesBtn">Ajustes</button>
         <div class="m-menu-sec">Diseño</div>
         <button type="button" data-proxy="btnUploadMain">Subir diseño</button>
         <button type="button" data-proxy="btnUndo">Deshacer</button>
@@ -1576,6 +1670,13 @@
           <span>Choke: <b id="pillChoke">-1.5px</b></span><span class="sep">|</span>
           <span>Sustrato: <b id="pillSub">Transparente</b></span>
         </div>
+        <!-- Zoom flotante (solo celular): − aleja, + acerca y el % encaja
+             la vista (Ver entero). Dispara el zoom real de la app. -->
+        <div class="zoom-pill" id="zoomPill" hidden role="group" aria-label="Zoom del lienzo">
+          <button type="button" id="btnZoomOutFloat" aria-label="Alejar">−</button>
+          <button type="button" id="btnZoomFitFloat" class="zp-val" title="Ver entero" aria-label="Ver entero">100%</button>
+          <button type="button" id="btnZoomInFloat" aria-label="Acercar">+</button>
+        </div>
         </div>
       </div>
 
@@ -1601,6 +1702,7 @@
         <div class="sheet-bar">
           <span class="grab" aria-hidden="true"></span>
           <span class="ttl" id="sheetTitle">Opciones</span>
+          <span class="ver-stamp" aria-hidden="true">v58</span>
           <button class="sheet-x sheet-toggle" id="sheetToggle" type="button" aria-label="Achicar o agrandar las opciones" aria-expanded="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
           </button>
@@ -2229,7 +2331,6 @@
             <button class="btn primary" id="btnVector">Vectorizar</button>
             <button class="btn" id="btnSvgDl" disabled>Descargar SVG</button>
           </div>
-          <div class="svgout" id="svgOut"><div class="checker" id="svgBox"></div></div>
           <div class="btnrow">
             <button class="btn" id="btnPoster">Posterizar en el lienzo</button>
           </div>
@@ -2633,6 +2734,22 @@
         </section>
         </div><!-- /.sheet-scroll -->
 
+        <!-- Móvil · botón de scroll tipo mouse: pastilla pequeña en la
+             orilla derecha de la hoja. Abierta: baja y sube entre las
+             perillas sin deslizar el dedo sobre las opciones. En tira:
+             se acuesta junto a la tira y cambia la perilla que esta
+             muestra, sin abrir la hoja (solo celular; en PC nunca se
+             muestra) -->
+        <div class="sheet-wheel" id="sheetWheel">
+          <button type="button" id="swUp" aria-label="Subir a las opciones de arriba">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
+          </button>
+          <span class="sw-dot" aria-hidden="true"></span>
+          <button type="button" id="swDown" aria-label="Bajar a las demás opciones">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+
       </div>
     </div>
 
@@ -2979,7 +3096,7 @@
       /* El color calculado por DeOldify también es de la imagen
          anterior: se suelta para no pintar la nueva con él. */
       czState.fused = null; czState.base = null; czState.baseData = null; czState.fusedData = null;
-      fondoPreviewActive = false; suavPreviewActive = false; bordesPreviewActive = false; calarPreviewActive = false; semiPreviewActive = false; inkPreviewActive = false; colorPreviewActive = false; autoiaPreviewActive = false; restaurarPreviewActive = false; colorearPreviewActive = false;
+      fondoPreviewActive = false; suavPreviewActive = false; bordesPreviewActive = false; calarPreviewActive = false; semiPreviewActive = false; inkPreviewActive = false; colorPreviewActive = false; autoiaPreviewActive = false; restaurarPreviewActive = false; colorearPreviewActive = false; vecPreviewActive = false;
       hasImage = true;
       $('#emptyState').hidden = true;
       /* Mostrar el lienzo con la imagen: sin esto el recuadro quedaba oculto
@@ -3195,7 +3312,7 @@
       work.width = c.width; work.height = c.height;
       wx.clearRect(0,0,work.width,work.height); wx.drawImage(c, 0, 0);
       ov.width = work.width; ov.height = work.height;
-      fondoPreviewActive = false; suavPreviewActive = false; bordesPreviewActive = false; calarPreviewActive = false; semiPreviewActive = false; inkPreviewActive = false; colorPreviewActive = false; autoiaPreviewActive = false; restaurarPreviewActive = false; colorearPreviewActive = false;
+      fondoPreviewActive = false; suavPreviewActive = false; bordesPreviewActive = false; calarPreviewActive = false; semiPreviewActive = false; inkPreviewActive = false; colorPreviewActive = false; autoiaPreviewActive = false; restaurarPreviewActive = false; colorearPreviewActive = false; vecPreviewActive = false;
       toolBase = cloneCanvas(work);
       computeFit(); if (sizeChanged) viewScale = fitScale; applyZoom(); updateDims(); refreshMejorar();
     }
@@ -3210,14 +3327,17 @@
         toast('PNG descargado a 300 DPI');
     });
     /* Imprimir: el botón abre un menú con dos opciones, normal o en
-       espejo. Se vuelca el diseño actual (el lienzo de trabajo, a
-       300 DPI) en el área de impresión y se abre el diálogo del sistema.
-       El CSS @media print oculta toda la app, así que en papel sale
-       solo la imagen; con la clase .mirror sale volteada horizontalmente
-       (para sublimación y transfer). Se espera a que la imagen cargue
-       antes de imprimir para que no salga la hoja en blanco. El modo
-       espejo solo afecta a la hoja impresa: el diseño en pantalla y el
-       archivo descargado quedan como están. */
+       espejo, y entrega el diseño tal como saldría en papel: un PNG
+       a 300 DPI (volteado cuando se pide espejo, para sublimación y
+       transfer), listo para imprimir desde el dispositivo. Antes se
+       abría el diálogo de impresión del sistema, pero hay vistas de
+       la app donde ese diálogo está bloqueado y el botón quedaba
+       muerto; la descarga funciona en todas. El diseño también se
+       vuelca en el área de impresión: si el usuario imprime desde el
+       menú de su navegador, el CSS @media print oculta toda la app y
+       en papel sale solo la imagen, con la clase .mirror volteada.
+       El modo espejo solo afecta a esta salida: el diseño en pantalla
+       queda como está. */
     const printMenu = $('#printMenu'), btnPrintEl = $('#btnPrint');
     function closePrintMenu(){
       printMenu.hidden = true;
@@ -3238,14 +3358,32 @@
       if (!requireImage()) return;
       const blob = await canvasPng(work, 300);
       if (!blob){ toast('El navegador no pudo preparar la imagen para imprimir.'); return; }
+      /* El área de impresión queda poblada con el diseño (y el volteo
+         en su clase) por si se imprime desde el menú del navegador. */
       const area = $('#printArea'), img = $('#printImg');
       area.classList.toggle('mirror', !!mirror);
       const url = URL.createObjectURL(blob);
       const cleanup = ()=> setTimeout(()=> URL.revokeObjectURL(url), 1000);
       window.addEventListener('afterprint', cleanup, { once:true });
-      img.onload = ()=>{ try{ window.print(); }catch(e){ toast('Este navegador no dejó abrir la impresión.'); } };
-      img.onerror = ()=>{ cleanup(); toast('No se pudo preparar la imagen para imprimir.'); };
+      img.onerror = cleanup;
       img.src = url;
+      /* La entrega: el mismo diseño a 300 DPI como PNG descargable;
+         en espejo va volteado de verdad, porque fuera del papel el
+         volteo ya no lo puede hacer el CSS de impresión. */
+      let out = blob;
+      if (mirror){
+        const fc = document.createElement('canvas');
+        fc.width = work.width; fc.height = work.height;
+        const fx = fc.getContext('2d');
+        fx.translate(fc.width, 0); fx.scale(-1, 1);
+        fx.drawImage(work, 0, 0);
+        out = await canvasPng(fc, 300);
+      }
+      if (out && download(out, mirror ? 'diseno-espejo-300dpi.png' : 'diseno-300dpi.png'))
+        toast(mirror ? 'Diseño en espejo descargado a 300 DPI, listo para imprimir.'
+                     : 'Diseño descargado a 300 DPI, listo para imprimir.');
+      else
+        toast('No se pudo preparar el diseño para imprimir.');
     }
     $('#btnPrintNormal').addEventListener('click', ()=> doPrint(false));
     $('#btnPrintMirror').addEventListener('click', ()=> doPrint(true));
@@ -3253,6 +3391,7 @@
     /* ---------- cambio de herramienta ---------- */
     let calarPreviewActive = false, semiPreviewActive = false, inkPreviewActive = false;
     let autoiaPreviewActive = false, restaurarPreviewActive = false, colorearPreviewActive = false;
+    let vecPreviewActive = false;
 
     /* ---------- perillas en estándar al entrar a cada herramienta ----------
        Al cambiar de herramienta NO se aplica ningún efecto: la imagen se
@@ -3379,7 +3518,6 @@
         setRangeStd('#vSmooth', '#vSmoothVal', 1);
         setRangeStd('#vDetail', '#vDetailVal', 50);
         lastSvg = null;
-        $('#svgOut').style.display = 'none';
         $('#btnSvgDl').disabled = true;
       }
       else if (name === 'convertir'){
@@ -3397,7 +3535,7 @@
       /* Si sales de Quitar fondo o de Suavizar bordes con la vista previa
          sin aplicar, el lienzo vuelve a como estaba: no se queda puesta. */
       if (name !== currentTool && toolBase &&
-          ((currentTool === 'fondo' && fondoPreviewActive) || (currentTool === 'suavizar' && suavPreviewActive) || (currentTool === 'bordes' && bordesPreviewActive) || (currentTool === 'calar' && calarPreviewActive) || (currentTool === 'semitono' && semiPreviewActive) || (currentTool === 'tinta' && inkPreviewActive) || (currentTool === 'color' && colorPreviewActive) || (currentTool === 'autoia' && autoiaPreviewActive) || (currentTool === 'restaurar' && restaurarPreviewActive) || (currentTool === 'colorear' && colorearPreviewActive))){
+          ((currentTool === 'fondo' && fondoPreviewActive) || (currentTool === 'suavizar' && suavPreviewActive) || (currentTool === 'bordes' && bordesPreviewActive) || (currentTool === 'calar' && calarPreviewActive) || (currentTool === 'semitono' && semiPreviewActive) || (currentTool === 'tinta' && inkPreviewActive) || (currentTool === 'color' && colorPreviewActive) || (currentTool === 'autoia' && autoiaPreviewActive) || (currentTool === 'restaurar' && restaurarPreviewActive) || (currentTool === 'colorear' && colorearPreviewActive) || (currentTool === 'vector' && vecPreviewActive))){
         wx.clearRect(0, 0, work.width, work.height);
         wx.drawImage(toolBase, 0, 0);
         /* Si la vista previa sin aplicar era de Color y efectos, no
@@ -3408,12 +3546,18 @@
           ['#colB','#colC','#colS'].forEach(id => $(id).value = 100); $('#colH').value = 0; $('#colM').value = 0;
           colorPreviewLabelsOnly();
         }
-        fondoPreviewActive = false; suavPreviewActive = false; bordesPreviewActive = false; calarPreviewActive = false; semiPreviewActive = false; inkPreviewActive = false; colorPreviewActive = false; autoiaPreviewActive = false; restaurarPreviewActive = false; colorearPreviewActive = false;
+        fondoPreviewActive = false; suavPreviewActive = false; bordesPreviewActive = false; calarPreviewActive = false; semiPreviewActive = false; inkPreviewActive = false; colorPreviewActive = false; autoiaPreviewActive = false; restaurarPreviewActive = false; colorearPreviewActive = false; vecPreviewActive = false;
       }
       /* Al salir de Borrar objeto sin aplicar, las marcas del pincel se
          limpian: el lienzo nunca fue tocado, solo la capa de marcas. */
       if (currentTool === 'borrarobj' && typeof borrarClearAll === 'function') borrarClearAll();
       currentTool = name;
+      /* La vista de comparación (Split A/B, Solo Tramado, Máscara Base W)
+         se apaga sola al entrar a otra herramienta y el lienzo vuelve a
+         «Resultado»: antes se quedaba prendida en todas y el tramado se
+         veía como un filtro pegado a la imagen. La capa Pro Studio
+         registra el gancho; si aún no cargó, no hay vista que apagar. */
+      if (window.DTFShared && typeof window.DTFShared.resetView === 'function') window.DTFShared.resetView();
       document.body.classList.remove('no-tool');
       $('#stageHead').hidden = false;
       $$('#rail .tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === name));
@@ -3520,6 +3664,8 @@
        - 2 dedos: zoom con pellizco, anclado al punto medio de los dedos, sobre
          el lienzo de resolución real (nítido, no estira la vista en pantalla). */
     const gesture = { pts: new Map(), pinch: null, down: null, dead: false };
+    /* Último toque simple: si llega otro rápido y cerca, es doble toque. */
+    let lastTap = { t: 0, x: 0, y: 0 };
     canvasBox.addEventListener('pointerdown', e => {
       gesture.pts.set(e.pointerId, [e.clientX, e.clientY]);
       /* En Borrar objeto, un dedo PINTA la marca en vez de arrastrar la
@@ -3579,8 +3725,22 @@
       gesture.pts.delete(e.pointerId);
       if (gesture.pts.size < 2) gesture.pinch = null;
       if (gesture.pts.size === 0){
-        if (!wasPainting && !wasErasing && !wasPinch && gesture.down && !gesture.down.panned && !gesture.dead && Date.now() - gesture.down.t < 600)
-          handleTap(gesture.down.x, gesture.down.y);
+        if (!wasPainting && !wasErasing && !wasPinch && gesture.down && !gesture.down.panned && !gesture.dead && Date.now() - gesture.down.t < 600){
+          /* Doble toque táctil = «Ver entero»: como la fila de Zoom ya
+             no está en el celular, encajar la vista se hace así (y
+             también desde el Menú, «Encajar en pantalla»). El primer
+             toque hace lo suyo (elegir color, marcar esquina); el
+             segundo, si llega rápido y cerca, encaja en vez de repetir
+             la acción. Con el mouse no aplica: ahí manda el clic. */
+          const nowTap = Date.now();
+          if (e.pointerType === 'touch' && nowTap - lastTap.t < 350 && Math.hypot(gesture.down.x - lastTap.x, gesture.down.y - lastTap.y) < 48){
+            lastTap.t = 0;
+            fitZoom(); stageScroll.scrollLeft = 0; stageScroll.scrollTop = 0;
+          } else {
+            if (e.pointerType === 'touch') lastTap = { t: nowTap, x: gesture.down.x, y: gesture.down.y };
+            handleTap(gesture.down.x, gesture.down.y);
+          }
+        }
         gesture.down = null; gesture.dead = false;
       }
     }
@@ -4736,7 +4896,7 @@
         if (ov.width !== work.width) ov.width = work.width;
         if (ov.height !== work.height) ov.height = work.height;
         toolBase = cloneCanvas(work);
-        fondoPreviewActive = false; suavPreviewActive = false; bordesPreviewActive = false; calarPreviewActive = false; semiPreviewActive = false; inkPreviewActive = false; autoiaPreviewActive = false; restaurarPreviewActive = false; colorearPreviewActive = false;
+        fondoPreviewActive = false; suavPreviewActive = false; bordesPreviewActive = false; calarPreviewActive = false; semiPreviewActive = false; inkPreviewActive = false; autoiaPreviewActive = false; restaurarPreviewActive = false; colorearPreviewActive = false; vecPreviewActive = false;
         fitZoom(); updateDims(); refreshMejorar();
         const salTxt = magiaFlipMode === 'espejo' ? 'en espejo para sublimar' : 'normal, listo para DTF';
         toast(bgSkipped
@@ -6611,23 +6771,58 @@
       }
       return out;
     }
+    /* El resultado de Vectorizar se ve EN EL LIENZO de la estación, en
+       grande sobre la imagen, igual que en las demás herramientas (antes
+       salía chiquito en una cajita abajo de las perillas y no se
+       apreciaba). El SVG trazado se rasteriza dibujándolo sobre el
+       lienzo principal: al ser vector, se ve nítido al tamaño completo
+       aunque la vista previa se trace sobre una copia reducida. La
+       vista previa al mover las barras se calcula desde toolBase y es
+       reversible (al cambiar de herramienta el lienzo vuelve a como
+       estaba); el botón Vectorizar lo deja aplicado, con deshacer, y el
+       SVG queda listo para descargar. */
+    let vecDrawSeq = 0;
+    function drawVectorOnCanvas(svg, commit){
+      const seq = ++vecDrawSeq;
+      const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+      const img = new Image();
+      img.onload = ()=>{
+        URL.revokeObjectURL(url);
+        /* Si ya se calculó una vista previa más nueva, o el usuario
+           cambió de herramienta mientras el SVG cargaba, esta ya no
+           se pinta encima. */
+        if (seq !== vecDrawSeq || currentTool !== 'vector' || !hasImage || !toolBase) return;
+        if (commit) pushUndoCanvas(toolBase);
+        wx.clearRect(0, 0, work.width, work.height);
+        wx.drawImage(img, 0, 0, work.width, work.height);
+        if (commit){
+          toolBase = cloneCanvas(work);
+          vecPreviewActive = false;
+          toast('Vector aplicado en el lienzo: descárgalo en SVG');
+        } else {
+          vecPreviewActive = true;
+        }
+      };
+      img.onerror = ()=>{ URL.revokeObjectURL(url); };
+      img.src = url;
+    }
     function runVector(preview){
-      if (!hasImage) return;
+      if (!hasImage || !toolBase) return;
       if (typeof ImageTracer === 'undefined'){
         if (!preview) toast('El vectorizador no cargó (sin conexión). Usa Posterizar mientras tanto.');
         return;
       }
       const detail = +$('#vDetail').value;
       const smooth = +$('#vSmooth').value;
-      /* La vista previa trabaja sobre una copia de máx. 700 px para que
-         responda al momento al mover las barras; el botón Vectorizar
-         traza la imagen completa. */
-      let srcCv = work;
-      if (preview && Math.max(work.width, work.height) > 700){
-        const sc = 700 / Math.max(work.width, work.height);
+      /* La vista previa trabaja sobre una copia de máx. 700 px de la
+         base de la herramienta para que responda al momento al mover
+         las barras; el botón Vectorizar traza la imagen completa. */
+      let srcCv = toolBase;
+      if (preview && Math.max(toolBase.width, toolBase.height) > 700){
+        const sc = 700 / Math.max(toolBase.width, toolBase.height);
         srcCv = document.createElement('canvas');
-        srcCv.width = Math.round(work.width * sc); srcCv.height = Math.round(work.height * sc);
-        srcCv.getContext('2d').drawImage(work, 0, 0, srcCv.width, srcCv.height);
+        srcCv.width = Math.round(toolBase.width * sc); srcCv.height = Math.round(toolBase.height * sc);
+        srcCv.getContext('2d').drawImage(toolBase, 0, 0, srcCv.width, srcCv.height);
       }
       let idata = srcCv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, srcCv.width, srcCv.height);
       /* Suavizado preservador de bordes (mediana) + cuantización de
@@ -6648,15 +6843,13 @@
           colorquantcycles: 3
         });
         lastSvg = svg;
-        $('#svgBox').innerHTML = svg;
-        $('#svgOut').style.display = 'block';
         $('#btnSvgDl').disabled = false;
-        if (!preview) toast('Vector listo: descárgalo en SVG');
+        drawVectorOnCanvas(svg, !preview);
       }catch(e){ if (!preview) toast('No se pudo vectorizar esta imagen'); }
     }
     let vecTimer = null;
     function scheduleVectorPreview(){
-      if (!hasImage || currentTool !== 'vector') return;
+      if (!hasImage || currentTool !== 'vector' || !toolBase) return;
       clearTimeout(vecTimer);
       vecTimer = setTimeout(()=>{ if (currentTool === 'vector') runVector(true); }, 450);
     }
@@ -6684,6 +6877,7 @@
         for (let ch = 0; ch < 3; ch++) d[i+ch] = Math.round(Math.round(d[i+ch] / step) * step);
       wx.putImageData(img, 0, 0);
       toolBase = cloneCanvas(work);
+      vecPreviewActive = false;
       toast('Imagen posterizada a colores planos');
     });
 
@@ -8675,21 +8869,47 @@
         else if (splitTimer){ clearInterval(splitTimer); splitTimer = null; }
       }
       function setSplit(on){ setViewMode(on ? 'split' : 'single'); }
-      $('#viewSplitBtn').addEventListener('click', function(){ setViewMode('split'); });
+      /* Las vistas son interruptores: tocar la vista que ya está puesta
+         vuelve a «Resultado». Antes solo prendían, así que el Split se
+         quedaba pegado y la única salida era acordarse de «Resultado». */
+      function toggleView(m){ setViewMode(viewMode === m ? 'single' : m); }
+      $('#viewSplitBtn').addEventListener('click', function(){ toggleView('split'); });
       $('#viewSingleBtn').addEventListener('click', function(){ setViewMode('single'); });
-      var vfb = $('#viewFullBtn'); if (vfb) vfb.addEventListener('click', function(){ setViewMode('full'); });
-      var vwb = $('#viewWhiteBtn'); if (vwb) vwb.addEventListener('click', function(){ setViewMode('white'); });
+      var vfb = $('#viewFullBtn'); if (vfb) vfb.addEventListener('click', function(){ toggleView('full'); });
+      var vwb = $('#viewWhiteBtn'); if (vwb) vwb.addEventListener('click', function(){ toggleView('white'); });
       var btnSplitPanel = $('#btnSplitPanel');
-      if (btnSplitPanel) btnSplitPanel.addEventListener('click', function(){ setViewMode('split'); });
+      if (btnSplitPanel) btnSplitPanel.addEventListener('click', function(){ toggleView('split'); });
+      /* Gancho para el motor: al cambiar de herramienta la vista vuelve
+         sola a «Resultado» (switchTool lo llama en cada cambio). La
+         comparación es para ver el antes/después de la herramienta en
+         curso, no un estado que siga al usuario de herramienta en
+         herramienta con la rejilla de semitono encima. */
+      window.DTFShared.resetView = function(){ if (viewMode !== 'single') setViewMode('single'); };
       if (handle){
         var dragging = false;
+        /* Dedos activos en toda la pantalla: si hay 2, el gesto es el
+           pellizco de zoom del lienzo y el tirador NO debe mover la línea
+           ni quedarse con el segundo dedo. Antes el arrastre del Split
+           seguía vivo durante el pellizco y la línea se robaba el gesto,
+           por eso en esta vista «no se podía» hacer zoom. */
+        var activePtrs = new Set();
+        document.addEventListener('pointerdown', function(e){
+          activePtrs.add(e.pointerId);
+          if (activePtrs.size >= 2) dragging = false;
+        }, true);
+        ['pointerup', 'pointercancel'].forEach(function(ev){
+          document.addEventListener(ev, function(e){ activePtrs.delete(e.pointerId); }, true);
+        });
         function moveSplit(clientX){
           var r = work.getBoundingClientRect(); if (!r.width) return;
           splitPct = Math.max(8, Math.min(92, ((clientX - r.left) / r.width) * 100));
           applySplitClip();
         }
-        handle.addEventListener('pointerdown', function(e){ dragging = true; handle.setPointerCapture(e.pointerId); e.preventDefault(); });
-        handle.addEventListener('pointermove', function(e){ if (dragging) moveSplit(e.clientX); });
+        handle.addEventListener('pointerdown', function(e){
+          if (activePtrs.size >= 2){ dragging = false; return; }
+          dragging = true; handle.setPointerCapture(e.pointerId); e.preventDefault();
+        });
+        handle.addEventListener('pointermove', function(e){ if (dragging && activePtrs.size < 2) moveSplit(e.clientX); });
         handle.addEventListener('pointerup', function(){ dragging = false; });
         handle.addEventListener('pointercancel', function(){ dragging = false; });
       }
@@ -9180,6 +9400,13 @@
             if (h) h.click();
             return;
           }
+          var aj = e.target.closest('#mAjustesBtn');
+          if (aj){
+            closeMenu();
+            var o = $('#mOptionsBtn');
+            if (o) o.click();
+            return;
+          }
           var proj = e.target.closest('#mProjectsBtn');
           if (proj){
             closeMenu();
@@ -9251,15 +9478,53 @@
         }
         return null;
       }
-      function refreshStrip(){
-        if (!stripRange) return;
-        stripTarget = pickStripTarget();
-        if (!stripTarget){ document.body.classList.remove('has-strip'); return; }
-        document.body.classList.add('has-strip');
+      /* Perillas (sliders) navegables de la herramienta activa, en el
+         orden en que aparecen en el panel: la lista que la pastilla de
+         scroll recorre cuando la hoja está en tira. */
+      function stripRanges(){
+        var panel = document.querySelector('.panel.active');
+        if (!panel) return [];
+        var out = [], rs = panel.querySelectorAll('input[type="range"]');
+        for (var i = 0; i < rs.length; i++){
+          if (!rs[i].disabled && !rs[i].closest('[hidden]')) out.push(rs[i]);
+        }
+        return out;
+      }
+      function syncStripUI(){
+        if (!stripTarget || !stripRange) return;
         if (stripLabel) stripLabel.textContent = stripFieldLabel(stripTarget);
         stripRange.min = stripTarget.min; stripRange.max = stripTarget.max;
         stripRange.step = stripTarget.step; stripRange.value = stripTarget.value;
         stripShowVal();
+      }
+      function refreshStrip(){
+        if (!stripRange) return;
+        /* Si la perilla que la tira ya muestra sigue existiendo en la
+           herramienta activa, se conserva: navegar con la pastilla no
+           debe saltar de vuelta a la primera perilla cuando algo
+           refresca la tira. */
+        var list = stripRanges();
+        if (!stripTarget || list.indexOf(stripTarget) < 0) stripTarget = pickStripTarget();
+        if (!stripTarget){ document.body.classList.remove('has-strip'); return; }
+        document.body.classList.add('has-strip');
+        syncStripUI();
+      }
+      /* Navegar entre perillas con la hoja en tira: la tira pasa a
+         mostrar la perilla siguiente (dir=1) o anterior (dir=-1) de
+         la herramienta, SIN abrir la hoja, para seguir viendo el
+         diseño mientras se aplica el efecto. Devuelve true si cambió
+         de perilla. */
+      function stripNav(dir){
+        var list = stripRanges();
+        if (list.length < 2 || !stripTarget) return false;
+        var i = list.indexOf(stripTarget);
+        if (i < 0) i = 0;
+        var ni = i + dir;
+        if (ni < 0 || ni >= list.length) return false;
+        stripTarget = list[ni];
+        lastRange = stripTarget;
+        syncStripUI();
+        return true;
       }
       if (stripRange){
         stripRange.addEventListener('input', function(){
@@ -9402,80 +9667,83 @@
           if (window.innerWidth > 820){ if (panelCol){ panelCol.style.height = ''; panelCol.style.maxHeight = ''; } document.body.classList.remove('sheet-mini'); }
         });
       }
-      /* Tira minimizada: deslizarla o tocarla REVELA la hoja completa.
-         Antes solo la barra superior (sheetBar) tenía el gesto de
-         expandir; la tira —que es la mitad visible de la hoja achicada
-         y donde el dedo cae naturalmente, sobre el slider— no tenía
-         ninguno: el arrastre vertical moría sobre el deslizador (su
-         pan-y intentaba desplazar una hoja con overflow:hidden) y la
-         hoja parecía trabada mostrando una sola perilla. Ahora:
-         - arrastrar la tira hacia arriba o hacia abajo la expande;
-         - si el navegador se queda el gesto vertical (pointercancel
-           sobre el deslizador), eso mismo se toma como intención de
-           revelar la hoja y se expande;
-         - tocar el nombre o el valor de la tira también la expande
-           (tocar el deslizador no: ahí sigue ajustando su valor). */
+      /* Tira minimizada: UN SOLO dueño del gesto.
+         Antes la tira tenía CUATRO caminos que la expandían y se
+         peleaban entre sí: pointermove (24px), pointercancel,
+         touchmove (7px) y click. Al arrastrar el deslizador de lado,
+         el temblor normal del dedo disparaba la apertura por
+         cualquiera de ellos; al abrirse, la tira desaparecía bajo el
+         dedo a mitad del arrastre (display:none), el gesto se
+         cancelaba y al achicar de nuevo se repetía el ciclo: la hoja
+         se abría y se cerraba sola y el panel se veía duplicado.
+         Ahora manda un solo gesto, con eventos de puntero (la tira y
+         su deslizador llevan touch-action:none en CSS, así que el
+         navegador nunca se queda el gesto ni lo cancela por scroll):
+         - el eje dominante se decide UNA vez por gesto, al pasar un
+           umbral de 11px, y queda fijo hasta soltar el dedo;
+         - el ORIGEN manda sobre el eje: si el toque empieza sobre el
+           deslizador de la tira, el gesto queda bloqueado a horizontal
+           y la hoja nunca se abre desde ahí, aunque el dedo derive en
+           vertical (la tira duplica la primera perilla del panel, y
+           decidir solo por dirección abría la hoja a mitad del ajuste
+           de esa perilla, con el resto deslizándose por debajo);
+         - eje vertical: la hoja se revela UNA sola vez;
+         - eje horizontal: no se toca nada — el deslizador nativo de
+           la tira sigue ajustando su valor durante todo el arrastre;
+         - pointercancel solo limpia el gesto, NUNCA expande;
+         - mientras la hoja se está moviendo (su transición dura
+           .3s) ningún otro disparo puede expandirla otra vez;
+         - tocar el nombre o el valor sigue revelando la hoja, por el
+           mismo camino y con el mismo bloqueo; tocar el deslizador
+           no, ahí sigue ajustando su valor. */
       var stripEl = $('#sheetStrip');
       if (stripEl){
-        var stripTouch = null;
-        stripEl.addEventListener('pointerdown', function(e){
+        var stripG = null;        /* gesto en curso: { id, x, y, axis } */
+        var stripLockUntil = 0;   /* bloqueo durante la transición */
+        var stripDragEndAt = 0;   /* fin del último arrastre real */
+        function stripExpand(){
           if (!document.body.classList.contains('sheet-mini')) return;
-          stripTouch = { x: e.clientX, y: e.clientY };
+          var now = Date.now();
+          if (now < stripLockUntil) return;
+          stripLockUntil = now + 400; /* transición de la hoja: .3s + margen */
+          sheetSetMini(false);
+        }
+        stripEl.addEventListener('pointerdown', function(e){
+          if (!document.body.classList.contains('sheet-mini')){ stripG = null; return; }
+          if (stripG) return;
+          /* Dónde empezó el toque manda sobre la dirección: si el
+             dedo cae SOBRE el deslizador de la tira, el gesto nace
+             bloqueado a horizontal (ver pointermove) y la hoja nunca
+             se abre desde ahí. */
+          stripG = { id: e.pointerId, x: e.clientX, y: e.clientY, axis: '',
+                     onSlider: !!(e.target && e.target.closest && e.target.closest('input[type="range"]')) };
         });
         stripEl.addEventListener('pointermove', function(e){
-          if (!stripTouch) return;
-          var dy = e.clientY - stripTouch.y, dx = e.clientX - stripTouch.x;
-          if (Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx)){
-            stripTouch = null;
-            sheetSetMini(false);
+          if (!stripG || e.pointerId !== stripG.id || stripG.axis) return;
+          var dx = e.clientX - stripG.x, dy = e.clientY - stripG.y;
+          if (Math.abs(dx) < 11 && Math.abs(dy) < 11) return;
+          /* Bloqueo por origen: un arrastre que empezó en el
+             deslizador solo ajusta su valor, aunque el dedo derive
+             en vertical; decidir el eje solo por la dirección (como
+             antes) clasificaba ese arrastre como vertical en cuanto
+             derivaba unos píxeles y abría la hoja a mitad del ajuste,
+             dejando la tira enfrente con el resto de las perillas
+             moviéndose por debajo. */
+          stripG.axis = stripG.onSlider ? 'h' : (Math.abs(dy) > Math.abs(dx) ? 'v' : 'h');
+          stripDragEndAt = Date.now();
+          if (stripG.axis === 'v'){
+            stripG = null;
+            stripExpand();
           }
         });
-        stripEl.addEventListener('pointercancel', function(){
-          if (stripTouch && document.body.classList.contains('sheet-mini')){
-            stripTouch = null;
-            sheetSetMini(false);
-          }
-        });
-        stripEl.addEventListener('pointerup', function(){ stripTouch = null; });
-        /* Respaldo táctil del gesto sobre la tira, por el mismo
-           motivo que el CSS de arriba: en el teléfono real el
-           navegador se quedaba el arrastre vertical que empezaba
-           sobre el slider de la tira y deslizaba el contenido de
-           atrás, con la fila de la perilla fija enfrente y la hoja
-           sin abrirse. Aquí el gesto se decide por su dirección
-           dominante, igual que en el área de opciones:
-           - vertical: se traga (preventDefault) y revela la hoja
-             completa; ya dentro, todas las perillas se desplazan
-             juntas en su área y solo la barra del título queda fija;
-           - horizontal sobre el slider: no se toca nada, para que
-             la perilla siga ajustando su valor como hasta ahora. */
-        var stripTTouch = null;
-        stripEl.addEventListener('touchstart', function(e){
-          if (e.touches.length !== 1 || !document.body.classList.contains('sheet-mini')){ stripTTouch = null; return; }
-          var t = e.touches[0];
-          stripTTouch = { x: t.clientX, y: t.clientY, mode: '' };
-        }, { passive: true });
-        stripEl.addEventListener('touchmove', function(e){
-          if (!stripTTouch || e.touches.length !== 1) return;
-          var t = e.touches[0];
-          var dx = t.clientX - stripTTouch.x, dy = t.clientY - stripTTouch.y;
-          if (!stripTTouch.mode){
-            if (Math.abs(dy) < 7 && Math.abs(dx) < 7) return;
-            stripTTouch.mode = Math.abs(dy) >= Math.abs(dx) ? 'v' : 'h';
-          }
-          if (stripTTouch.mode === 'v'){
-            e.preventDefault();
-            stripTTouch = null;
-            sheetSetMini(false);
-          }
-        }, { passive: false });
-        var stripTEnd = function(){ stripTTouch = null; };
-        stripEl.addEventListener('touchend', stripTEnd);
-        stripEl.addEventListener('touchcancel', stripTEnd);
+        var stripGEnd = function(){ stripG = null; };
+        stripEl.addEventListener('pointerup', stripGEnd);
+        stripEl.addEventListener('pointercancel', stripGEnd);
         stripEl.addEventListener('click', function(e){
           if (!document.body.classList.contains('sheet-mini')) return;
           if (stripRange && e.target === stripRange) return;
-          sheetSetMini(false);
+          if (Date.now() - stripDragEndAt < 350) return; /* fue un arrastre, no un toque */
+          stripExpand();
         });
       }
       /* Desplazamiento vertical de las opciones, manejado a mano.
@@ -9499,11 +9767,19 @@
         var scTouch = null;
         sheetScroll.addEventListener('touchstart', function(e){
           if (e.touches.length !== 1 || !window.matchMedia('(max-width: 820px)').matches){ scTouch = null; return; }
+          /* Con la hoja minimizada el área no se desplaza: la tira es
+             una fila fija fuera de esta área, y si el contenido se
+             moviera aquí dentro se vería deslizarse por debajo de
+             ella mientras la perilla de la tira queda enfrente. El
+             gesto se traga entero (la zona lleva touch-action:none,
+             así que el navegador tampoco mueve nada más). */
+          if (document.body.classList.contains('sheet-mini')){ scTouch = null; return; }
           var t = e.touches[0];
           scTouch = { x: t.clientX, y: t.clientY, top: sheetScroll.scrollTop, mode: '', moved: false };
         }, { passive: true });
         sheetScroll.addEventListener('touchmove', function(e){
           if (!scTouch || e.touches.length !== 1) return;
+          if (document.body.classList.contains('sheet-mini')){ scTouch = null; return; } /* se achicó a mitad del gesto */
           var t = e.touches[0];
           var dx = t.clientX - scTouch.x, dy = t.clientY - scTouch.y;
           if (!scTouch.mode){
@@ -9525,6 +9801,112 @@
         sheetScroll.addEventListener('click', function(e){
           if (Date.now() - lastSheetScrollEnd < 350){ e.preventDefault(); e.stopPropagation(); }
         }, true);
+      }
+      /* Botón de scroll tipo mouse: la pastilla de la orilla derecha
+         trabaja SIN deslizar el dedo sobre las opciones (ese gesto
+         era el que se peleaba con la tira y con los deslizadores), y
+         tiene dos trabajos según el estado de la hoja:
+         - Hoja ABIERTA: desplaza el área de opciones. Un toque mueve
+           un paso, casi una perilla; mantener presionado sigue
+           moviendo, como dejar girando la rueda del mouse, y al
+           soltar se detiene. Mueve el mismo scrollTop que el gesto
+           manual de arriba, así que ambos caminos conviven. Las
+           flechas se apagan en el tope y en el fondo, y la pastilla
+           se oculta sola cuando el contenido cabe entero.
+         - Hoja en TIRA (minimizada): la pastilla sale acostada junto
+           a la tira y NO abre la hoja ni desplaza nada: cada toque
+           cambia la perilla que la tira está mostrando por la
+           siguiente o la anterior de la herramienta, para navegar
+           entre perillas viendo el diseño mientras se aplica el
+           efecto. Mantener presionado sigue cambiando de perilla,
+           más despacio. Las flechas se apagan en la primera y en la
+           última perilla, y la pastilla no sale si la herramienta
+           tiene una sola perilla (no hay a dónde navegar). */
+      var sheetWheel = $('#sheetWheel'), swUp = $('#swUp'), swDown = $('#swDown');
+      if (sheetWheel && sheetScroll && swUp && swDown){
+        var swDelay = null, swHold = null, swQueued = false;
+        function swMax(){ return Math.max(0, sheetScroll.scrollHeight - sheetScroll.clientHeight); }
+        function swMini(){ return document.body.classList.contains('sheet-mini'); }
+        function swSync(){
+          if (document.body.classList.contains('sheet-closed')){
+            sheetWheel.style.display = 'none';
+            document.body.classList.remove('has-stripnav');
+            return;
+          }
+          if (swMini()){
+            var list = stripRanges();
+            var show = list.length >= 2 && !!stripTarget;
+            sheetWheel.style.display = show ? '' : 'none';
+            document.body.classList.toggle('has-stripnav', show);
+            if (show){
+              var i = list.indexOf(stripTarget);
+              swUp.disabled = i <= 0;
+              swDown.disabled = i >= list.length - 1;
+              swUp.setAttribute('aria-label', 'Perilla anterior');
+              swDown.setAttribute('aria-label', 'Perilla siguiente');
+            }
+            return;
+          }
+          document.body.classList.remove('has-stripnav');
+          swUp.setAttribute('aria-label', 'Subir a las opciones de arriba');
+          swDown.setAttribute('aria-label', 'Bajar a las demás opciones');
+          var max = swMax();
+          swUp.disabled = sheetScroll.scrollTop <= 1;
+          swDown.disabled = sheetScroll.scrollTop >= max - 1;
+          sheetWheel.style.display = max <= 1 ? 'none' : '';
+        }
+        function swSyncSoon(){
+          if (swQueued) return;
+          swQueued = true;
+          requestAnimationFrame(function(){ swQueued = false; swSync(); });
+        }
+        function swGo(dir, px){
+          var max = swMax();
+          var nt = Math.max(0, Math.min(max, sheetScroll.scrollTop + dir * px));
+          if (nt !== sheetScroll.scrollTop) sheetScroll.scrollTop = nt;
+          swSync();
+        }
+        /* Un paso de la pastilla: en tira cambia de perilla; abierta
+           desplaza el área. */
+        function swStep(dir, hold){
+          if (swMini()){ stripNav(dir); swSync(); }
+          else swGo(dir, hold ? 20 : 150);
+        }
+        function swStop(){
+          if (swDelay){ clearTimeout(swDelay); swDelay = null; }
+          if (swHold){ clearInterval(swHold); swHold = null; }
+        }
+        function swBind(btn, dir){
+          btn.addEventListener('pointerdown', function(e){
+            e.preventDefault();
+            swStop();
+            swStep(dir, false); /* un toque: un paso */
+            var mini = swMini();
+            swDelay = setTimeout(function(){
+              swDelay = null;
+              /* Mantener presionado: en tira cambia de perilla cada
+                 320 ms; abierta sigue desplazando como la rueda. */
+              swHold = setInterval(function(){ swStep(dir, true); }, mini ? 320 : 30);
+            }, mini ? 450 : 380);
+          });
+          btn.addEventListener('pointerup', swStop);
+          btn.addEventListener('pointerleave', swStop);
+          btn.addEventListener('pointercancel', swStop);
+          btn.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+        }
+        swBind(swUp, -1);
+        swBind(swDown, 1);
+        sheetScroll.addEventListener('scroll', swSync, { passive: true });
+        /* El contenido cambia de altura al cambiar de herramienta o
+           al abrirse bloques de la herramienta: la pastilla se
+           reevalúa sola (visible solo si hay algo que desplazar). */
+        new MutationObserver(swSyncSoon).observe(sheetScroll, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'hidden'] });
+        /* Al achicar o agrandar la hoja cambia el trabajo de la
+           pastilla (desplazar ↔ cambiar de perilla): se reevalúa al
+           cambiar las clases del body. */
+        new MutationObserver(swSyncSoon).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        window.addEventListener('resize', swSyncSoon);
+        swSync();
       }
       syncSheetTitle();
     })();
@@ -9603,6 +9985,24 @@
       if (zoomValEl && hdrZoomVal){
         new MutationObserver(function(){ hdrZoomVal.textContent = zoomValEl.textContent; })
           .observe(zoomValEl, { childList: true, characterData: true, subtree: true });
+      }
+
+      /* ----- Zoom flotante (celular): dispara el zoom real, espeja el % y
+         sigue la visibilidad de la píldora del lienzo (diseño cargado) ----- */
+      var zof = $('#btnZoomOutFloat'), zif = $('#btnZoomInFloat'), zff = $('#btnZoomFitFloat');
+      if (zof) zof.addEventListener('click', function(){ proxyClick('zoomOut'); });
+      if (zif) zif.addEventListener('click', function(){ proxyClick('zoomIn'); });
+      if (zff) zff.addEventListener('click', function(){ proxyClick('zoomFit'); });
+      if (zoomValEl && zff){
+        new MutationObserver(function(){ zff.textContent = zoomValEl.textContent; })
+          .observe(zoomValEl, { childList: true, characterData: true, subtree: true });
+      }
+      var zoomPill = $('#zoomPill'), canvasPillEl = $('#canvasPill');
+      if (zoomPill && canvasPillEl){
+        var syncZoomPill = function(){ zoomPill.hidden = canvasPillEl.hidden; };
+        new MutationObserver(syncZoomPill)
+          .observe(canvasPillEl, { attributes: true, attributeFilter: ['hidden'] });
+        syncZoomPill();
       }
 
       /* ----- Sustrato: cabecera y barra de documento espejan el control real ----- */
