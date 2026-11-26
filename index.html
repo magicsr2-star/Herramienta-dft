@@ -11,8 +11,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Herramientas DTF" />
-    <title>Herramientas DTF</title>
+    <meta name="apple-mobile-web-app-title" content="DTF Studio" />
+    <title>DTF Studio · Herramientas DTF</title>
     <link rel="stylesheet" href="assets/fonts.css" />
     <script src="assets/imagetracer_v1.2.6.js"></script>
     <style>
@@ -238,21 +238,25 @@
       #shirtBox.flipping{ animation:shirtFlip .45s ease; transform-origin:center center; }
       @keyframes shirtFlip{ 0%{ transform:perspective(900px) rotateY(0deg); } 50%{ transform:perspective(900px) rotateY(84deg); } 100%{ transform:perspective(900px) rotateY(0deg); } }
       @media (prefers-reduced-motion: reduce){ #shirtBox.flipping{ animation:none; } }
-      .proj-card{ border:1px solid var(--line); border-radius:12px; background:var(--panel2); padding:.7rem; margin-bottom:.7rem; }
-      .proj-head{ display:flex; align-items:baseline; gap:.5rem; flex-wrap:wrap; margin-bottom:.55rem; }
-      .proj-head .nm{ font-weight:800; font-size:.95rem; flex:1; min-width:120px; }
-      .proj-head .dt{ font-size:.76rem; color:var(--muted); font-family:"IBM Plex Mono", monospace; }
-      .proj-thumbs{ display:grid; grid-template-columns:1fr 1fr; gap:.55rem; margin-bottom:.55rem; }
+      /* Galería estilo Picsart: retícula de tarjetas donde manda la
+         vista previa (frente y espalda); los datos van en una línea
+         compacta bajo el nombre, sin listas de texto. */
+      #projGallery{ display:grid; grid-template-columns:repeat(auto-fill, minmax(168px, 1fr)); gap:.75rem; }
+      .proj-card{ border:1px solid var(--line); border-radius:14px; background:var(--panel2); padding:.55rem; display:flex; flex-direction:column; }
+      .proj-thumbs{ display:grid; grid-template-columns:1fr 1fr; gap:.45rem; cursor:pointer; }
       .proj-thumbs figure{ margin:0; }
       .proj-thumbs img, .proj-thumbs .noimg{
         width:100%; aspect-ratio:900/960; object-fit:contain; display:flex; align-items:center; justify-content:center;
         background:var(--stage); border:1px solid var(--line); border-radius:10px; color:var(--muted); font-size:.8rem; text-align:center; padding:.4rem;
       }
-      .proj-thumbs figcaption{ font-size:.76rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-top:.3rem; text-align:center; }
-      .proj-res{ font-size:.84rem; color:var(--muted); line-height:1.5; }
-      .proj-res b{ color:var(--ink); }
-      .proj-res ul{ margin:.25rem 0 .1rem; padding-left:1.05rem; }
-      .proj-res .cdot{ display:inline-block; width:12px; height:12px; border-radius:4px; border:1px solid var(--line); vertical-align:-1px; margin-right:.3rem; }
+      .proj-thumbs figcaption{ font-size:.72rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-top:.28rem; text-align:center; }
+      .proj-head{ display:flex; align-items:baseline; gap:.5rem; flex-wrap:wrap; margin:.55rem 0 .25rem; }
+      .proj-head .nm{ font-weight:800; font-size:.92rem; flex:1; min-width:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+      .proj-head .dt{ font-size:.72rem; color:var(--muted); font-family:"IBM Plex Mono", monospace; white-space:nowrap; }
+      .proj-meta{ font-size:.8rem; color:var(--muted); line-height:1.5; }
+      .proj-meta b{ color:var(--ink); }
+      .proj-meta .cdot{ display:inline-block; width:12px; height:12px; border-radius:4px; border:1px solid var(--line); vertical-align:-1px; margin-right:.3rem; }
+      .proj-card .btnrow{ margin-top:auto; padding-top:.55rem; }
       .svgout{ margin-top:.7rem; border:1px solid var(--line); border-radius:10px; overflow:hidden; display:none; }
       .svgout .checker{ padding:10px; text-align:center; }
       .svgout svg{ max-width:100%; height:auto; }
@@ -262,6 +266,71 @@
         opacity:0; pointer-events:none; transition:.25s; max-width:92vw; text-align:center;
       }
       .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+      /* ---------- Pantalla de carga · marca DTF Studio ----------
+         Imagen aprobada (búho ámbar, fondo negro) a pantalla completa al
+         abrir; se retira con un fundido cuando la app ya cargó. */
+      .splash{
+        position:fixed; inset:0; z-index:200; background:#030304;
+        display:flex; align-items:center; justify-content:center;
+        opacity:1; transition:opacity .6s ease;
+      }
+      .splash.out{ opacity:0; pointer-events:none; }
+      /* Lienzo con la proporción exacta de la imagen (1152×2048): reproduce
+         el mismo encuadre de antes (contain en horizontal, cover en
+         vertical) y permite poner encima la cabeza del búho y el círculo
+         de carga como capas reales, porque en la imagen venían pintados
+         y por eso se quedaban estáticos. */
+      .splash-canvas{
+        position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+        width:min(100vw, 56.25vh); width:min(100vw, 56.25dvh);
+        aspect-ratio:1152 / 2048;
+      }
+      @media (orientation:portrait){
+        .splash-canvas{ width:max(100vw, 56.25vh); width:max(100vw, 56.25dvh); }
+      }
+      .splash-plate{ width:100%; height:100%; display:block; }
+      /* Cabeza del búho: recorte de la misma imagen sobre la placa sin
+         cabeza; gira suave desde el cuello, como los búhos: ladea a un
+         lado, pausa, vuelve y ladea al otro lado. */
+      .splash-owl-head{
+        position:absolute; left:40.80%; top:29.20%; width:18.49%; height:auto; display:block;
+        transform-origin:50.2% 74.6%;
+        animation:owlTilt 3.2s ease-in-out infinite;
+        will-change:transform;
+      }
+      @keyframes owlTilt{
+        0%, 16%{ transform:rotate(0deg); }
+        30%, 44%{ transform:rotate(9deg); }
+        58%, 70%{ transform:rotate(0deg); }
+        82%, 92%{ transform:rotate(-7deg); }
+        100%{ transform:rotate(0deg); }
+      }
+      /* Círculo de carga real: gira de continuo sobre el hueco que dejó
+         el círculo pintado en la imagen original. */
+      .splash-ring{
+        position:absolute; left:43.32%; top:80.47%; width:13.54%; aspect-ratio:1;
+        animation:ringSpin .9s linear infinite;
+        will-change:transform;
+      }
+      .splash-ring svg{ width:100%; height:100%; display:block; filter:drop-shadow(0 0 6px rgba(255,90,31,.55)); }
+      @keyframes ringSpin{ to{ transform:rotate(360deg); } }
+      .splash-bar{
+        position:absolute; left:50%; bottom:max(4%, env(safe-area-inset-bottom));
+        transform:translateX(-50%); width:min(220px,55vw); height:3px;
+        border-radius:99px; background:rgba(255,255,255,.14); overflow:hidden;
+      }
+      .splash-bar i{
+        display:block; height:100%; width:40%; border-radius:99px;
+        background:var(--accent); animation:splashSlide 1.1s ease-in-out infinite;
+      }
+      @keyframes splashSlide{ 0%{ transform:translateX(-110%); } 100%{ transform:translateX(280%); } }
+      @media (prefers-reduced-motion: reduce){
+        .splash{ transition:none; }
+        .splash-bar i{ animation:none; width:100%; }
+        .splash-owl-head{ animation:none; }
+        .splash-ring{ animation-duration:2.6s; }
+      }
 
       /* ---------- Procesando: capa visible en procesos pesados ---------- */
       .busy{
@@ -475,6 +544,26 @@
       .lupa-data div{ display:flex; justify-content:space-between; gap:.5rem; color:var(--muted); }
       .lupa-data b{ color:#dfe3ea; font-weight:600; text-align:right; }
       .lupa-data .ok{ color:var(--ok); }
+      .lupa-head-r{ display:flex; align-items:center; gap:.45rem; }
+      .lupa-min-btn{
+        flex:none; width:26px; height:26px; min-height:26px; padding:0;
+        display:inline-flex; align-items:center; justify-content:center;
+        border:1px solid var(--line); border-radius:6px; background:var(--panel);
+        color:#dfe3ea; cursor:pointer;
+      }
+      .lupa-min-btn svg{ width:14px; height:14px; }
+      @media (hover:hover){ .lupa-min-btn:hover{ border-color:var(--muted); color:#fff; } }
+      .lupa-mini{
+        position:absolute; top:10px; right:10px; z-index:6;
+        display:inline-flex; align-items:center; gap:.4rem;
+        min-height:2.25rem; padding:.4rem .65rem;
+        background:rgba(27,30,36,.97); border:1px solid var(--line); border-radius:999px;
+        box-shadow:var(--shadow); color:#fff; cursor:pointer;
+        font-family:"IBM Plex Mono",monospace; font-size:.7rem; font-weight:700;
+      }
+      .lupa-mini[hidden]{ display:none !important; }
+      .lupa-mini svg{ width:15px; height:15px; stroke:var(--accent); flex:none; }
+      @media (hover:hover){ .lupa-mini:hover{ border-color:var(--accent); } }
       @media (max-width:640px){ .lupa{ width:176px; } }
       .canvas-pill{
         position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:6;
@@ -539,7 +628,7 @@
          se elige una herramienta (y se cierra con su ✕); y todo lo de
          las barras de escritorio vive en un solo botón «Menú». Nada se
          elimina del DOM: los botones móviles disparan los originales. */
-      .m-topbar, .sheet-bar{ display:none; }
+      .m-topbar, .sheet-bar, .sheet-strip{ display:none; }
       @media screen and (max-width:820px){
         .ps-menubar, .ps-options, .topbar, .statusbar, .doc-tabs,
         .ruler-h, .ruler-v{ display:none !important; }
@@ -568,6 +657,13 @@
         .m-menu button:active{ background:var(--panel2); }
         .m-menu button.on{ color:var(--accent); }
         .m-menu button:disabled{ opacity:.38; }
+        .m-menu-brand{
+          display:flex; align-items:center; gap:.6rem; padding:.55rem .6rem .35rem;
+        }
+        .m-menu-brand img{ width:38px; height:38px; border-radius:9px; display:block; flex:none; }
+        .m-menu-brand .bt{ display:flex; flex-direction:column; line-height:1.15; }
+        .m-menu-brand .bt strong{ font-size:1rem; font-weight:800; color:var(--ink); }
+        .m-menu-brand .bt small{ font-size:.72rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); }
 
         /* Lienzo protagonista, herramientas abajo */
         .layout, body.no-tool .layout{
@@ -580,10 +676,11 @@
         .stage-scroll{ padding:10px; }
         .rail{
           grid-column:1; grid-row:2; flex-direction:row; align-items:center;
+          position:relative; z-index:56; /* sobre la hoja (55): la hoja jamás tapa ni bloquea el riel */
           height:calc(70px + env(safe-area-inset-bottom, 0px));
           overflow-x:auto; overflow-y:hidden; border-right:0; border-top:1px solid var(--line);
           padding:.35rem .5rem calc(.35rem + env(safe-area-inset-bottom, 0px));
-          gap:.35rem; scrollbar-width:none;
+          gap:.35rem; scrollbar-width:none; -webkit-overflow-scrolling:touch;
         }
         .rail::-webkit-scrollbar{ display:none; }
         .rail-group{
@@ -599,8 +696,9 @@
         /* Panel de opciones: hoja que sube desde abajo. Su altura inicial
            deja ver buena parte del lienzo; desde la barra superior se
            arrastra para agrandarla o bajarla, y con el botón ⌄ se achica
-           a una franja (solo la barra) para ver el efecto en vivo a
-           pantalla casi completa mientras se mueven los controles. */
+           a una tira con la barra y el slider principal de la herramienta
+           visible, para moverlo viendo el diseño casi a pantalla
+           completa; deslizar la tira o tocarla revela el resto. */
         .panel-col{
           position:fixed; left:0; right:0; top:auto; z-index:55;
           bottom:calc(70px + env(safe-area-inset-bottom, 0px));
@@ -609,6 +707,14 @@
           transition:transform .3s ease, height .25s ease;
         }
         body.sheet-mini .panel-col{ height:64px; max-height:64px; overflow:hidden; }
+        body.sheet-mini.has-strip .panel-col{ height:112px; max-height:112px; }
+        body.sheet-mini.has-strip .sheet-strip{
+          display:flex; align-items:center; gap:.6rem;
+          padding:.3rem .8rem .55rem; background:var(--panel2);
+        }
+        .sheet-strip .ss-label{ flex:none; max-width:38%; font-weight:700; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .sheet-strip input[type="range"]{ flex:1; min-width:0; accent-color:var(--accent); min-height:2rem; margin:0; }
+        .sheet-strip .ss-val{ flex:none; min-width:2.2rem; text-align:right; color:var(--accent); font-family:"IBM Plex Mono", monospace; font-weight:600; font-size:.9rem; }
         body.sheet-drag .panel-col{ transition:transform .3s ease; }
         body.sheet-closed .panel-col{ transform:translateY(calc(100% + 90px)); pointer-events:none; }
         .sheet-bar{
@@ -636,8 +742,489 @@
         @media (prefers-reduced-motion: reduce){ .panel-col{ transition:none; } }
       }
     </style>
+    <style>
+      /* ---------- Diseño Stitch · DTF PRO STUDIO RIP (solo escritorio) ----------
+         Todo va dentro de min-width:821px: la versión móvil simple
+         (lienzo a pantalla completa, barra inferior, hoja de opciones)
+         queda exactamente como estaba. Solo cambia el aspecto; cada
+         control nuevo dispara los controles reales de la app. */
+      .rip-footer, .insp-tabs{ display:none; }
+      @media (min-width:821px){
+        :root{
+          --bg:#10131b; --panel:#1c1f28; --panel2:#14171f; --ink:#e6e8f0; --muted:#9ba1ab;
+          --line:#2b303c; --accent:#ff5a1f; --accent-soft:rgba(255,90,31,.16);
+          --stage:#0c0e12; --ok:#4edea3; --ps-header:#1c202a; --ps-input:#0b0e16;
+        }
+        /* ----- Cabecera DTF PRO STUDIO RIP ----- */
+        .ps-menubar{
+          height:56px; min-height:56px; padding:.4rem .75rem; gap:.8rem;
+          background:var(--panel2); flex-wrap:nowrap; font-size:.82rem;
+        }
+        .ps-brand{ gap:.55rem; }
+        .brand-tile{
+          width:28px; height:28px; border-radius:6px; background:#030304; overflow:hidden;
+          display:flex; align-items:center; justify-content:center; flex:none;
+        }
+        .brand-tile img{ width:100%; height:100%; object-fit:cover; display:block; }
+        .brand-txt{ display:flex; flex-direction:column; line-height:1; }
+        .brand-txt .nm{
+          font-family:"Archivo Narrow","Archivo",sans-serif; font-weight:700;
+          font-size:17px; color:#f1efe8; letter-spacing:.01em; white-space:nowrap;
+        }
+        .brand-txt .sub{
+          font-size:10px; font-weight:700; letter-spacing:.22em;
+          color:var(--accent); margin-top:3px; white-space:nowrap;
+        }
+        .hdr-group{ display:flex; align-items:center; gap:.3rem; flex:none; }
+        .hbtn{
+          display:inline-flex; align-items:center; gap:.4rem; height:32px; min-height:32px;
+          padding:0 .55rem; border:0; border-radius:6px; background:#22262e;
+          color:#e6e8f0; font-size:12.5px; font-weight:600;
+        }
+        .hbtn svg{ width:17px; height:17px; stroke:#9ba1ab; flex:none; }
+        .hbtn.icon{ width:32px; padding:0; justify-content:center; }
+        .hbtn:disabled{ opacity:.38; cursor:not-allowed; }
+        @media (hover:hover){ .hbtn:not(:disabled):hover{ background:#272a32; } }
+        .hdr-sep{ width:1px; height:20px; background:var(--line); flex:none; }
+        .hdr-zoom{
+          display:flex; align-items:center; gap:.15rem; flex:none;
+          background:var(--ps-input); border-radius:6px; padding:3px;
+        }
+        .hdr-zoom button{
+          width:24px; height:24px; min-height:24px; border:0; background:transparent;
+          color:var(--muted); border-radius:4px; display:flex; align-items:center;
+          justify-content:center; font-size:15px; padding:0;
+        }
+        .hdr-zoom button svg{ width:15px; height:15px; stroke:currentColor; }
+        @media (hover:hover){ .hdr-zoom button:hover{ color:#fff; } }
+        #hdrZoomVal{
+          font-family:"IBM Plex Mono",monospace; font-size:11px; color:#f1efe8;
+          padding:0 .3rem; min-width:44px; text-align:center;
+        }
+        .ps-rip{ gap:.8rem; font-size:.7rem; }
+        .ps-rip .rip-stat{ display:flex; align-items:center; white-space:nowrap; }
+        .hdr-sub{
+          display:flex; align-items:center; gap:2px; flex:none;
+          background:var(--ps-input); border-radius:6px; padding:3px;
+        }
+        .hdr-sub .lbl{
+          font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+          color:#6d7078; padding:0 .4rem; white-space:nowrap;
+        }
+        .hdr-sub button{
+          border:0; background:transparent; color:var(--muted); height:26px; min-height:26px;
+          padding:0 .5rem; border-radius:5px; font-size:12px; font-weight:600; white-space:nowrap;
+        }
+        .hdr-sub button.on{ background:#22262e; color:#f1efe8; }
+        #btnRipTop{
+          font-family:"Archivo Narrow","Archivo",sans-serif; text-transform:uppercase;
+          letter-spacing:.05em; font-size:15px; font-weight:700; height:34px; min-height:34px;
+          padding:.3rem .9rem; border-radius:6px; display:inline-flex; gap:.4rem; align-items:center;
+          box-shadow:0 2px 8px rgba(255,90,31,.25); white-space:nowrap;
+        }
+        #btnRipTop svg{ width:18px; height:18px; stroke:#fff; }
+        @media (max-width:1280px){
+          .ps-rip .rip-stat{ display:none; }
+          .hdr-sub .lbl{ display:none; }
+        }
+        /* ----- Barra de acciones: fina, bajo la cabecera ----- */
+        .topbar{ padding:.35rem .8rem; background:var(--panel2); }
+        .topbar #btnUploadMain, .topbar #btnUndo{ display:none !important; }
+        .btn{ border-radius:8px; }
+        .btn.primary{ font-family:"Archivo Narrow","Archivo",sans-serif; letter-spacing:.02em; }
+        /* La fila de dimensiones/zoom real vive en la cabecera (controles espejo) */
+        .stage-head{ display:none !important; }
+        /* ----- Distribución: riel 76px · inspector 336px ----- */
+        .layout{ grid-template-columns:76px minmax(0,1fr); }
+        @media (min-width:1024px){
+          .layout{ grid-template-columns:76px minmax(0,1fr) 336px; }
+          body.no-tool .layout{ grid-template-columns:76px minmax(0,1fr) 0; }
+        }
+        /* ----- Riel izquierdo de herramientas con rótulo ----- */
+        .rail{ background:var(--panel2); padding:.5rem 0; gap:.25rem; }
+        .tool-btn{
+          width:64px; height:auto; min-height:52px; flex-direction:column; gap:3px;
+          padding:.35rem .1rem; font-size:.56rem; line-height:1.1; text-align:center;
+          color:var(--muted); border-radius:7px; font-weight:600;
+        }
+        .tool-btn svg{ width:21px; height:21px; }
+        .tool-btn.active{
+          background:var(--accent); border-color:var(--accent); color:#fff;
+          box-shadow:0 0 10px rgba(255,90,31,.35);
+        }
+        .tool-btn.active svg{ stroke:#fff; }
+        /* ----- Pestañas de documento + barra de sustrato ----- */
+        .doc-tabs{
+          min-height:40px; background:#0b0e16; padding:0 .5rem;
+          align-items:flex-end; gap:4px;
+        }
+        .doc-tab{
+          min-height:34px; padding:.35rem .8rem; font-size:11.5px;
+          border-top:0; border-radius:7px 7px 0 0; position:relative; align-items:center;
+        }
+        .doc-tab.on{ background:var(--panel); color:#fff; }
+        .doc-tab.on::after{
+          content:""; position:absolute; left:0; right:0; bottom:0;
+          height:2px; background:var(--accent);
+        }
+        .doc-sub{
+          display:flex; align-items:center; gap:2px; flex:none; align-self:center;
+          background:var(--panel); border-radius:6px; padding:3px; margin-left:.6rem;
+        }
+        .doc-sub .lbl{
+          font-size:10px; text-transform:uppercase; letter-spacing:.06em;
+          color:#6d7078; font-weight:700; padding:0 .35rem; white-space:nowrap;
+        }
+        .doc-sub button{
+          display:inline-flex; align-items:center; gap:.35rem; border:0; background:transparent;
+          color:var(--muted); height:26px; min-height:26px; padding:0 .5rem; border-radius:5px;
+          font-size:12px; font-weight:600; white-space:nowrap;
+        }
+        .doc-sub button.on{ background:#22262e; color:#f1efe8; }
+        .doc-sub .dotc{ width:10px; height:10px; border-radius:50%; flex:none; }
+        .doc-sub .d-dark{ background:#0c0e12; border:1px solid var(--line); }
+        .doc-sub .d-light{ background:#f8f9fa; }
+        .doc-sub .d-grid{ background:#32353d; border-radius:3px; }
+        .icc-chip{
+          display:flex; align-items:center; gap:.35rem; flex:none; align-self:center;
+          background:var(--panel); border-radius:6px; padding:.32rem .55rem; margin-left:.5rem;
+          color:var(--ok); font-size:10.5px; font-weight:700; letter-spacing:.05em;
+          text-transform:uppercase; white-space:nowrap;
+        }
+        .icc-chip svg{ width:15px; height:15px; stroke:var(--ok); flex:none; }
+        @media (max-width:1280px){ .icc-chip{ display:none; } .doc-sub .lbl{ display:none; } }
+        /* ----- Panel derecho: pestañas del inspector ----- */
+        .insp-tabs{
+          display:flex; gap:4px; background:#181b24; padding:6px 6px 0;
+          position:sticky; top:0; z-index:3;
+        }
+        .insp-tab{
+          flex:1; display:flex; align-items:center; justify-content:center; gap:.35rem;
+          border:0; background:transparent; color:var(--muted); cursor:pointer;
+          font-family:"Archivo Narrow","Archivo",sans-serif; font-size:12.5px; font-weight:700;
+          text-transform:uppercase; letter-spacing:.06em; height:32px; min-height:32px;
+          border-radius:7px 7px 0 0; padding:0 .2rem;
+        }
+        .insp-tab svg{ width:15px; height:15px; stroke:currentColor; flex:none; }
+        .insp-tab.on{ background:#22262e; color:#f1efe8; }
+        .insp-tab.on svg{ stroke:var(--accent); }
+        .panel h2{ font-family:"Archivo Narrow","Archivo",sans-serif; font-size:19px; }
+        /* ----- Lienzo: split naranja, lupa y píldora ----- */
+        #splitHandle{ background:var(--accent); }
+        #splitHandle .grip{ border-color:var(--accent); color:var(--accent); }
+        .split-tag.right{ background:var(--accent); border-color:#ff7a3d; }
+        .lupa{ background:rgba(20,23,31,.97); border-radius:8px; }
+        /* ----- Barra de estado + pie RIP READY ----- */
+        .statusbar{ background:#0b0e16; font-size:11px; min-height:26px; }
+        .rip-footer{
+          display:flex; align-items:center; gap:.9rem; flex:none; flex-wrap:wrap;
+          background:var(--panel2); border-top:1px solid var(--line);
+          padding:.3rem .8rem; font-family:"IBM Plex Mono",monospace;
+          font-size:11px; color:var(--muted);
+        }
+        .rip-footer b{ color:#f1efe8; font-weight:600; }
+        .rip-footer .sep{ width:1px; height:14px; background:var(--line); flex:none; }
+        .rip-footer .rf-ready{
+          display:flex; align-items:center; gap:.45rem;
+          color:#f1efe8; font-weight:700; letter-spacing:.05em;
+        }
+        .rip-footer .dot{ width:8px; height:8px; border-radius:50%; background:var(--ok); flex:none; }
+        .rip-footer .rf-right{ margin-left:auto; display:flex; align-items:center; gap:.9rem; flex-wrap:wrap; }
+        .rip-footer .green{ color:var(--ok); }
+        .rip-footer .orange{ color:var(--accent); }
+        .ps-options .ttl{ font-family:"Archivo Narrow","Archivo",sans-serif; font-size:14px; }
+      }
+    </style>
+    <style>
+      /* ---------- Pantalla de inicio (SOLO celular) ----------
+         Base del diseño entregado (Stitch), solo con lógica real:
+         sin licencia, sin nube, sin ejemplos. Los proyectos recientes
+         salen de la galería real de Atelier (frente/espalda), las
+         herramientas abren las herramientas reales de la app y el
+         botón flotante sube una imagen con el selector real. En PC
+         nunca se muestra: todo vive en max-width:820px y el editor
+         queda exactamente igual. */
+      .m-home{ display:none; }
+      @media screen and (max-width:820px){
+        body.home-on .m-topbar, body.home-on .layout, body.home-on .statusbar{ display:none !important; }
+        body.home-on .m-home{
+          display:flex; flex-direction:column; position:fixed; inset:0; z-index:44;
+          background:#10131b; color:#e6e8f0; overflow-y:auto; overflow-x:hidden;
+          padding-bottom:calc(168px + env(safe-area-inset-bottom, 0px));
+          -webkit-overflow-scrolling:touch;
+        }
+        /* Sin encoger: el contenido de inicio es más alto que la
+           pantalla y la columna flex comprimía la fila de chips
+           (su overflow-x la deja con altura mínima 0). */
+        .hm-head, .hm-chips, .hm-sec{ flex:none; }
+        .hm-head{
+          position:sticky; top:0; z-index:3; display:flex; align-items:center; gap:.6rem;
+          padding:.7rem .75rem .6rem; background:rgba(20,23,31,.92);
+          backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+          border-bottom:1px solid #262b36;
+        }
+        .hm-logo{ width:40px; height:40px; border-radius:10px; display:block; flex:none; }
+        .hm-brand{ display:flex; flex-direction:column; line-height:1.05; min-width:0; }
+        .hm-name{
+          font-family:"Archivo Narrow","Archivo",sans-serif; font-size:21px; font-weight:800;
+          letter-spacing:.01em; color:#f1efe8; text-transform:uppercase; white-space:nowrap;
+        }
+        .hm-name em{ font-style:normal; color:#ff7a3d; }
+        .hm-sub{
+          font-size:10px; font-weight:700; letter-spacing:.22em; text-transform:uppercase;
+          color:#ff7a3d; margin-top:3px; white-space:nowrap;
+        }
+        .hm-chips{
+          display:flex; gap:.5rem; overflow-x:auto; scrollbar-width:none;
+          padding:.6rem .75rem .2rem;
+        }
+        .hm-chips::-webkit-scrollbar{ display:none; }
+        .hm-chip{
+          flex:none; border:0; border-radius:999px; padding:.45rem .85rem; min-height:2.1rem;
+          background:#1c1f28; color:#9ba1ab; font-size:11px; font-weight:700;
+          letter-spacing:.06em; text-transform:uppercase; white-space:nowrap;
+        }
+        .hm-chip.on{ background:#ff5a1f; color:#fff; }
+        .hm-chip:active{ transform:scale(.96); }
+        .hm-sec{ padding:.85rem .75rem 0; }
+        .hm-sec-head{ display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-bottom:.55rem; }
+        .hm-sec-head h2{ font-size:16px; font-weight:700; letter-spacing:-.01em; color:#f1efe8; margin:0; }
+        .hm-link{
+          border:0; background:transparent; color:#ffb59e; font-size:11px; font-weight:700;
+          letter-spacing:.06em; text-transform:uppercase; padding:.3rem .2rem; min-height:2rem;
+        }
+        .hm-strip{
+          display:flex; gap:.6rem; overflow-x:auto; scrollbar-width:none;
+          padding:.1rem .05rem .3rem;
+        }
+        .hm-strip::-webkit-scrollbar{ display:none; }
+        .hm-new{
+          flex:none; width:104px; align-self:stretch; border:0; border-radius:12px;
+          background:#181b24; color:#9ba1ab; display:flex; flex-direction:column;
+          align-items:center; justify-content:center; gap:.5rem; padding:.8rem .4rem;
+          font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+          text-align:center; line-height:1.25; min-height:172px;
+        }
+        .hm-new:active{ transform:scale(.97); }
+        .hm-new-ico{
+          width:40px; height:40px; border-radius:50%; background:#1c202a; color:#ff5a1f;
+          display:flex; align-items:center; justify-content:center;
+        }
+        .hm-new-ico svg{ width:22px; height:22px; }
+        .hm-card{ flex:none; width:152px; cursor:pointer; }
+        .hm-card:active{ transform:scale(.98); }
+        .hm-thumbs{ display:grid; grid-template-columns:1fr 1fr; gap:.3rem; }
+        .hm-thumbs figure{ margin:0; }
+        .hm-thumbs img, .hm-thumbs .noimg{
+          width:100%; aspect-ratio:900/960; object-fit:contain; display:flex;
+          align-items:center; justify-content:center; background:#0c0e12;
+          border:1px solid #262b36; border-radius:9px; color:#6d7078;
+          font-size:.68rem; text-align:center; padding:.25rem;
+        }
+        .hm-thumbs figcaption{
+          font-size:9px; font-weight:700; color:#9ba1ab; text-transform:uppercase;
+          letter-spacing:.05em; margin-top:.22rem; text-align:center;
+        }
+        .hm-card .nm{
+          display:block; font-size:12.5px; font-weight:600; color:#f1efe8; margin-top:.45rem;
+          overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+        }
+        .hm-card .dt{
+          display:block; font-size:10px; color:#6d7078; text-transform:uppercase;
+          letter-spacing:.04em; margin-top:.15rem;
+        }
+        .hm-empty{ font-size:12.5px; color:#9ba1ab; line-height:1.5; margin:.1rem 0 0; }
+        .hm-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:.5rem; }
+        .hm-tool{
+          border:0; border-radius:12px; background:#1c1f28; color:#e6e8f0;
+          display:flex; flex-direction:column; align-items:center; text-align:center;
+          gap:.35rem; padding:.75rem .3rem .65rem; min-height:104px;
+        }
+        .hm-tool:active{ transform:scale(.96); background:#272a32; }
+        .hm-tool-ico{
+          width:46px; height:46px; border-radius:12px; background:#14171f; color:#ff5a1f;
+          display:flex; align-items:center; justify-content:center;
+        }
+        .hm-tool-ico svg{ width:25px; height:25px; }
+        .hm-tool-nm{ font-size:12.5px; font-weight:600; line-height:1.15; }
+        .hm-tool-ds{ font-size:10px; color:#9ba1ab; line-height:1.2; }
+        .hm-cta{
+          position:fixed; left:50%; transform:translateX(-50%); z-index:5;
+          bottom:calc(80px + env(safe-area-inset-bottom, 0px));
+          display:flex; align-items:center; gap:.55rem; border:0; border-radius:999px;
+          background:linear-gradient(90deg, #ff5a1f, #ff7a3d); color:#fff;
+          font-size:14.5px; font-weight:700; letter-spacing:.01em; white-space:nowrap;
+          padding:.85rem 1.35rem; min-height:3.1rem;
+          box-shadow:0 8px 24px rgba(255,90,31,.45);
+        }
+        .hm-cta:active{ transform:translateX(-50%) scale(.96); }
+        .hm-cta svg{ width:23px; height:23px; flex:none; }
+        .hm-nav{
+          position:fixed; left:0; right:0; bottom:0; z-index:5;
+          display:flex; align-items:flex-start; justify-content:space-around;
+          height:calc(64px + env(safe-area-inset-bottom, 0px));
+          padding:.3rem .25rem env(safe-area-inset-bottom, 0px);
+          background:rgba(20,23,31,.94); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+          border-top:1px solid #262b36; box-shadow:0 -4px 20px rgba(0,0,0,.5);
+        }
+        .hm-nav-it{
+          border:0; background:transparent; color:#9ba1ab; min-width:56px; min-height:3rem;
+          display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+          font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+        }
+        .hm-nav-it svg{ width:22px; height:22px; }
+        .hm-nav-it.on{ color:#ff5a1f; }
+        .hm-nav-it:active{ transform:scale(.95); }
+        .hm-nav-add{
+          border:0; width:48px; height:48px; min-height:48px; border-radius:14px; flex:none;
+          background:#ff5a1f; color:#fff; margin-top:-16px;
+          display:flex; align-items:center; justify-content:center;
+          box-shadow:0 4px 16px rgba(255,90,31,.4);
+        }
+        .hm-nav-add svg{ width:27px; height:27px; }
+        .hm-nav-add:active{ transform:scale(.94); }
+      }
+    </style>
   </head>
   <body>
+    <!-- Pantalla de carga · marca aprobada DTF Studio (se retira con fundido) -->
+    <div class="splash" id="splash" role="img" aria-label="DTF Studio · Herramientas DTF">
+      <div class="splash-canvas">
+        <img class="splash-plate" src="assets/splash-plate.webp" alt="" />
+        <img class="splash-owl-head" src="assets/owl-head.png" alt="" aria-hidden="true" />
+        <div class="splash-ring" aria-hidden="true">
+          <svg viewBox="0 0 100 100" focusable="false">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5"/>
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#ff6a1f" stroke-width="5" stroke-linecap="round" pathLength="100" stroke-dasharray="38 62"/>
+          </svg>
+        </div>
+      </div>
+      <div class="splash-bar" aria-hidden="true"><i></i></div>
+    </div>
+    <!-- Pantalla de inicio (SOLO celular): primera pantalla al abrir.
+         Sin licencia, sin nube y sin ejemplos: los proyectos recientes
+         son los guardados de verdad en la galería de Atelier, las
+         herramientas abren las reales y el botón flotante sube imagen. -->
+    <div class="m-home" id="homeScreen" aria-label="Pantalla de inicio">
+      <header class="hm-head">
+        <img class="hm-logo" src="assets/icon-192.png" alt="" />
+        <div class="hm-brand">
+          <span class="hm-name">DTF <em>Studio</em></span>
+          <span class="hm-sub">Herramientas DTF</span>
+        </div>
+      </header>
+      <div class="hm-chips" aria-label="Accesos rápidos">
+        <button type="button" class="hm-chip on" id="homeChipAll">Todos</button>
+        <button type="button" class="hm-chip" data-home-tool="pliego">Pliego DTF</button>
+        <button type="button" class="hm-chip" data-home-tool="semitono">Semitonos</button>
+        <button type="button" class="hm-chip" data-home-tool="playera">Atelier</button>
+        <button type="button" class="hm-chip" data-home-tool="vector">Vectorizar</button>
+        <button type="button" class="hm-chip" data-home-tool="pdf">Salida RIP</button>
+      </div>
+      <section class="hm-sec" id="homeProjectsSec">
+        <div class="hm-sec-head">
+          <h2>Proyectos recientes</h2>
+          <button type="button" class="hm-link" id="homeSeeAll">Ver todo ›</button>
+        </div>
+        <div class="hm-strip" id="homeProjects"></div>
+        <p class="hm-empty" id="homeProjEmpty">Todavía no hay proyectos guardados. Cuando guardes uno en Atelier, aparecerá aquí con su frente y su espalda.</p>
+      </section>
+      <section class="hm-sec">
+        <div class="hm-sec-head"><h2>Herramientas rápidas</h2></div>
+        <div class="hm-grid">
+          <button type="button" class="hm-tool" data-home-tool="fondo">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 3 14 18M8.5 3h8L21 12l-4.5 9h-9L3 12l3.2-6.4"/></svg></span>
+            <span class="hm-tool-nm">Quitar fondo</span>
+            <span class="hm-tool-ds">Fondo transparente</span>
+          </button>
+          <button type="button" class="hm-tool" data-home-tool="calar">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8 11h6"/></svg></span>
+            <span class="hm-tool-nm">Calar color</span>
+            <span class="hm-tool-ds">Quita un color</span>
+          </button>
+          <button type="button" class="hm-tool" data-home-tool="semitono">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="5" r="1.1" fill="currentColor"/><circle cx="12" cy="5" r="1.7" fill="currentColor"/><circle cx="19" cy="5" r="2.3" fill="currentColor"/><circle cx="5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="2.3" fill="currentColor"/><circle cx="19" cy="12" r="1.1" fill="currentColor"/><circle cx="5" cy="19" r="2.3" fill="currentColor"/><circle cx="12" cy="19" r="1.1" fill="currentColor"/><circle cx="19" cy="19" r="1.7" fill="currentColor"/></svg></span>
+            <span class="hm-tool-nm">Semitonos</span>
+            <span class="hm-tool-ds">Puntos para DTF</span>
+          </button>
+          <button type="button" class="hm-tool" data-home-tool="vector">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 20 4"/><circle cx="4" cy="20" r="2"/><circle cx="20" cy="4" r="2"/><circle cx="12" cy="12" r="2"/></svg></span>
+            <span class="hm-tool-nm">Vectorizar</span>
+            <span class="hm-tool-ds">Trazo en SVG</span>
+          </button>
+          <button type="button" class="hm-tool" data-home-tool="pliego">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg></span>
+            <span class="hm-tool-nm">Pliego DTF</span>
+            <span class="hm-tool-ds">Varios diseños</span>
+          </button>
+          <button type="button" class="hm-tool" data-home-tool="playera">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 3.5 3 7l2 4 2.5-1.5V21h9V9.5L19 11l2-4-5.5-3.5a3.5 3.5 0 0 1-7 0Z"/></svg></span>
+            <span class="hm-tool-nm">Atelier</span>
+            <span class="hm-tool-ds">Frente y espalda</span>
+          </button>
+        </div>
+      </section>
+      <section class="hm-sec">
+        <div class="hm-sec-head"><h2>Más herramientas</h2></div>
+        <div class="hm-grid">
+          <button type="button" class="hm-tool" data-home-tool="mejorar">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></span>
+            <span class="hm-tool-nm">Mejorar · 300 DPI</span>
+            <span class="hm-tool-ds">Tamaño de impresión</span>
+          </button>
+          <button type="button" class="hm-tool" data-home-tool="superres">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1"/><path d="M13 5h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6M16 16l2-2M21 21l-3-3"/></svg></span>
+            <span class="hm-tool-nm">Súper resolución</span>
+            <span class="hm-tool-ds">Ampliar la imagen</span>
+          </button>
+          <button type="button" class="hm-tool" data-home-tool="extraer">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8.5" y="8.5" width="7" height="7" rx="1"/></svg></span>
+            <span class="hm-tool-nm">Sacar de una foto</span>
+            <span class="hm-tool-ds">Desde una playera</span>
+          </button>
+          <button type="button" class="hm-tool" data-home-tool="color">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5S12 2 12 2 9.5 7.9 8 9.5 5 13 5 15a7 7 0 0 0 7 7Z"/></svg></span>
+            <span class="hm-tool-nm">Color y efectos</span>
+            <span class="hm-tool-ds">Brillo, contraste…</span>
+          </button>
+          <button type="button" class="hm-tool" data-home-tool="tinta">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11Z"/><path d="M9.2 14.5a2.9 2.9 0 0 0 2 3.4"/></svg></span>
+            <span class="hm-tool-nm">Optimizador de tinta</span>
+            <span class="hm-tool-ds">Ahorro y base blanca</span>
+          </button>
+          <button type="button" class="hm-tool" data-home-tool="pdf">
+            <span class="hm-tool-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6"/><path d="M8 15h8" stroke-dasharray="2.5 2"/></svg></span>
+            <span class="hm-tool-nm">Salida RIP</span>
+            <span class="hm-tool-ds">PDF multicapa</span>
+          </button>
+        </div>
+      </section>
+      <button type="button" class="hm-cta" id="homeUpload">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+        Comenzar con imagen o diseño
+      </button>
+      <nav class="hm-nav" aria-label="Navegación principal">
+        <button type="button" class="hm-nav-it on" data-home-nav="inicio">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          Inicio
+        </button>
+        <button type="button" class="hm-nav-it" data-home-nav="proyectos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg>
+          Proyectos
+        </button>
+        <button type="button" class="hm-nav-add" id="homeAdd" aria-label="Subir imagen o diseño">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button type="button" class="hm-nav-it" data-home-nav="biblioteca">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
+          Biblioteca
+        </button>
+        <button type="button" class="hm-nav-it" data-home-nav="ajustes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"/><circle cx="16" cy="8" r="2.2"/><circle cx="8" cy="16" r="2.2"/></svg>
+          Ajustes
+        </button>
+      </nav>
+    </div>
     <!-- Móvil · barra superior simple: un solo botón de menú (solo celular) -->
     <div class="m-topbar">
       <button class="btn" id="mMenuBtn" type="button" aria-haspopup="true" aria-expanded="false">
@@ -654,11 +1241,18 @@
         Subir diseño
       </button>
       <div class="m-menu" id="mMenu" hidden role="menu" aria-label="Menú principal">
+        <div class="m-menu-brand">
+          <img src="assets/icon-192.png" alt="" />
+          <span class="bt"><strong>DTF Studio</strong><small>Herramientas DTF</small></span>
+        </div>
+        <button type="button" id="mHomeBtn">Pantalla de inicio</button>
         <div class="m-menu-sec">Diseño</div>
         <button type="button" data-proxy="btnUploadMain">Subir diseño</button>
         <button type="button" data-proxy="btnUndo">Deshacer</button>
         <button type="button" data-proxy="btnReset">Restablecer</button>
         <div class="m-menu-sec">Guardar y salida</div>
+        <button type="button" data-proxy="btnSaveProject">Guardar proyecto</button>
+        <button type="button" id="mProjectsBtn">Proyectos guardados</button>
         <button type="button" data-proxy="btnDownload">Descargar PNG</button>
         <button type="button" data-proxy="btnPdfTop">PDF Multicapa</button>
         <button type="button" data-proxy="btnRipTop">Procesar RIP</button>
@@ -677,8 +1271,13 @@
     </div>
     <!-- Pro Studio · barra de menús -->
     <header class="ps-menubar">
-      <div class="ps-brand"><span class="tag">DTF</span><span>Studio Pro</span></div>
-      <nav class="ps-menu" aria-label="Menús">
+      <div class="ps-brand">
+        <span class="brand-tile"><img src="assets/icon-192.png" alt="" /></span>
+        <span class="brand-txt"><span class="nm">DTF Studio</span><span class="sub">HERRAMIENTAS DTF</span></span>
+      </div>
+      <!-- Menús clásicos: fuera de la cabecera nueva, pero vivos en el DOM
+           porque el menú móvil («Ayuda») y la capa RIP los siguen usando. -->
+      <nav class="ps-menu" aria-label="Menús" hidden>
         <button type="button" data-menu="archivo">Archivo</button>
         <button type="button" data-menu="edicion">Edición</button>
         <button type="button" data-menu="imagen">Imagen</button>
@@ -690,10 +1289,40 @@
         <button type="button" data-menu="ventana">Ventana</button>
         <button type="button" data-menu="ayuda">Ayuda</button>
       </nav>
+      <div class="hdr-group">
+        <button class="hbtn" type="button" id="btnOpenHdr" title="Abrir archivo">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
+          <span>Abrir</span>
+        </button>
+        <button class="hbtn icon" type="button" id="btnUndoHdr" title="Deshacer" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
+        </button>
+        <button class="hbtn icon" type="button" id="btnRedoHdr" title="Rehacer" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg>
+        </button>
+      </div>
+      <div class="hdr-sep" aria-hidden="true"></div>
+      <div class="hdr-zoom" role="group" aria-label="Zoom">
+        <button type="button" id="btnZoomOutHdr" title="Reducir zoom">−</button>
+        <span id="hdrZoomVal">100%</span>
+        <button type="button" id="btnZoomInHdr" title="Aumentar zoom">+</button>
+        <button type="button" id="btnZoomFitHdr" title="Ajustar a pantalla">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></svg>
+        </button>
+      </div>
       <div class="ps-rip">
-        <span><span class="dot"></span>RIP Engine: 300 DPI</span>
-        <span>CMYK + 2W</span>
-        <button class="btn primary" type="button" id="btnRipTop">▶ Procesar RIP</button>
+        <span class="rip-stat"><span class="dot"></span>RIP Engine: 300 DPI</span>
+        <span class="rip-stat">CMYK + 2W</span>
+        <div class="hdr-sub" role="group" aria-label="Sustrato">
+          <span class="lbl">Sustrato:</span>
+          <button type="button" data-hsub="checker" class="on">Transparente</button>
+          <button type="button" data-hsub="black">Algodón Oscuro</button>
+          <button type="button" data-hsub="white">Algodón Blanco</button>
+        </div>
+        <button class="btn primary" type="button" id="btnRipTop">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>
+          Exportar RIP
+        </button>
       </div>
     </header>
     <!-- Pro Studio · barra de opciones de la herramienta de semitono -->
@@ -859,6 +1488,13 @@
           <button class="doc-tab on" type="button" id="docTabMain">diseño actual <span>@ 300 DPI (CMYK/8*)</span></button>
           <button class="doc-tab" type="button" id="docTabSheet">pliego DTF <span>@ gang sheet</span></button>
           <span class="doc-tab" style="margin-left:auto;color:var(--spot-magenta)" id="docTabCut">● CutContour Bézier Activo</span>
+          <div class="doc-sub" role="group" aria-label="Previsualización de sustrato">
+            <span class="lbl">Previsualización:</span>
+            <button type="button" data-hsub="black"><span class="dotc d-dark"></span>Camiseta Negra</button>
+            <button type="button" data-hsub="white"><span class="dotc d-light"></span>Camiseta Blanca</button>
+            <button type="button" data-hsub="checker" class="on"><span class="dotc d-grid"></span>Film Transparente</button>
+          </div>
+          <span class="icc-chip"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg>ICC Calibrado: DTF-Cotton-V4</span>
         </div>
         <div class="stage-head" id="stageHead" hidden>
           <span class="dims mono" id="dims">Sin imagen cargada</span>
@@ -899,14 +1535,16 @@
         </div>
         <!-- Lupa Macro flotante: puntos de semitono ampliados del diseño real -->
         <div class="lupa" id="lupaPanel" hidden>
-          <div class="lupa-head"><span>Lupa Macro (1200%)</span><span class="w1">Base W1 Activa</span></div>
+          <div class="lupa-head"><span>Lupa Macro (1200%)</span><span class="lupa-head-r"><span class="w1">Base W1 Activa</span><button type="button" class="lupa-min-btn" id="lupaMinBtn" aria-label="Minimizar Lupa Macro" title="Minimizar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button></span></div>
           <canvas id="lupaCv" width="216" height="120" aria-label="Puntos de semitono ampliados"></canvas>
           <div class="lupa-data">
             <div><span>Geometría:</span><b id="lupaGeo">Roseta Elíptica</b></div>
+            <div><span>Ganancia Punto:</span><b id="lupaGain">100%</b></div>
             <div><span>Solape Base:</span><b id="lupaChoke">-1.5 px (Sin Halo)</b></div>
             <div><span>Tacto Textil:</span><b class="ok">Suave &amp; Transpirable</b></div>
           </div>
         </div>
+        <button type="button" class="lupa-mini" id="lupaMiniBtn" hidden aria-label="Mostrar Lupa Macro" title="Mostrar Lupa Macro"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/></svg><span>Lupa</span></button>
         <!-- Píldora de telemetría sobre el lienzo -->
         <div class="canvas-pill" id="canvasPill" hidden>
           <span class="ok">● Preflight RIP OK</span><span class="sep">|</span>
@@ -920,6 +1558,22 @@
 
       <!-- Control panels -->
       <div class="panel-col">
+        <!-- Escritorio · pestañas del inspector RIP (en el celular no se ven:
+             ahí manda la hoja de opciones con su barra propia) -->
+        <div class="insp-tabs" role="tablist" aria-label="Inspector">
+          <button type="button" class="insp-tab" data-insp="tramas" role="tab">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="5" cy="5" r="1.1" fill="currentColor"/><circle cx="12" cy="5" r="1.7" fill="currentColor"/><circle cx="19" cy="5" r="2.3" fill="currentColor"/><circle cx="5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="2.3" fill="currentColor"/><circle cx="19" cy="12" r="1.1" fill="currentColor"/><circle cx="5" cy="19" r="2.3" fill="currentColor"/><circle cx="12" cy="19" r="1.1" fill="currentColor"/><circle cx="19" cy="19" r="1.7" fill="currentColor"/></svg>
+            Tramas &amp; RIP
+          </button>
+          <button type="button" class="insp-tab" data-insp="canales" role="tab">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg>
+            Canales
+          </button>
+          <button type="button" class="insp-tab" data-insp="pliego" role="tab">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg>
+            Pliego
+          </button>
+        </div>
         <!-- Móvil · asa y cierre de la hoja de opciones (solo celular) -->
         <div class="sheet-bar">
           <span class="grab" aria-hidden="true"></span>
@@ -930,6 +1584,14 @@
           <button class="sheet-x" id="sheetClose" type="button" aria-label="Cerrar opciones">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
           </button>
+        </div>
+        <!-- Móvil · tira minimizada: con la hoja achicada queda visible el
+             slider principal de la herramienta para moverlo viendo el
+             diseño (solo celular; en PC nunca se muestra) -->
+        <div class="sheet-strip" id="sheetStrip">
+          <span class="ss-label" id="ssLabel"></span>
+          <input type="range" id="ssRange" aria-label="Ajuste rápido de la herramienta activa">
+          <span class="ss-val" id="ssVal"></span>
         </div>
 
         <section class="panel" data-panel="fondo">
@@ -1369,6 +2031,15 @@
             <input type="range" id="colC" min="40" max="180" value="100" />
           </div>
           <div class="field">
+            <label>Oscuro <span class="val" id="colBlackVal">0</span></label>
+            <input type="range" id="colBlack" min="0" max="100" value="0" />
+          </div>
+          <div class="field">
+            <label>Luz <span class="val" id="colWhiteVal">0</span></label>
+            <input type="range" id="colWhite" min="0" max="100" value="0" />
+          </div>
+          <p class="hint"><b>Oscuro y Luz</b> limpian el diseño antes de imprimir: todo lo más oscuro que marque <b>Oscuro</b> se vuelve negro puro, y todo lo más claro que marque <b>Luz</b> se vuelve blanco puro. Los tonos del medio apenas se mueven.</p>
+          <div class="field">
             <label>Saturación <span class="val" id="colSVal">100%</span></label>
             <input type="range" id="colS" min="0" max="220" value="100" />
           </div>
@@ -1385,6 +2056,10 @@
             <button class="btn" data-preset="invert(1)">Invertir</button>
             <button class="btn" data-preset="sepia(0.85)">Sepia</button>
           </div>
+          <div class="btnrow">
+            <button class="btn" id="btnSwapBW">Blanco ↔ Negro</button>
+          </div>
+          <p class="hint"><b>Blanco ↔ Negro</b> no es el negativo: solo intercambia el blanco por negro y el negro por blanco, incluidos los casi blancos y casi negros. Los demás colores quedan igual — sirve para pasar un diseño de playera oscura a clara y al revés.</p>
           <div class="btnrow">
             <button class="btn" id="btnFlipH">Voltear en espejo ↔</button>
             <button class="btn" id="btnFlipV">Voltear ↕</button>
@@ -1792,8 +2467,6 @@
           <div class="btnrow">
             <button class="btn" id="btnDownloadBoth" type="button">Descargar ambas vistas (frente + espalda)</button>
           </div>
-          <p class="hint">Guardar junta la plantilla completa: el diseño del frente, el de la espalda, el color de la camisa y el ancho de impresión. Para conservarla fuera de la app, descarga ambas vistas.</p>
-
           <h3 class="group-title">Galería de proyectos</h3>
           <p class="hint" id="projEmpty" style="margin-top:0">Todavía no hay proyectos guardados. Arma el frente y la espalda y toca «Guardar proyecto».</p>
           <div id="projGallery"></div>
@@ -1870,7 +2543,7 @@
             </div>
           </div>
 
-          <h3 class="group-title">Canales de salida &amp; límite TIL</h3>
+          <h3 class="group-title" id="ripChannelsTitle">Canales de salida &amp; límite TIL</h3>
           <div class="chan-row" style="margin-bottom:.35rem"><span>Límite total de tinta (TIL)</span><span id="ripTil" style="color:#5aa9e6">— / 300%</span></div>
           <div class="chan-row"><span><span class="dotc" style="background:#00bcd4"></span>Cian (C)</span><span id="ripChanC">—</span></div>
           <div class="chan-row"><span><span class="dotc" style="background:#e91e63"></span>Magenta (M)</span><span id="ripChanM">—</span></div>
@@ -1948,6 +2621,22 @@
       <span id="sbSize">— (300 ppi)</span>
       <span>🌡 Horno / Curado: 165°C • 15s • Poliamida DTF Medium</span>
       <span class="ok" id="sbState" style="color:var(--muted)">○ Sin diseño cargado <span>| v4.8.2-PRO · RIP Edition</span></span>
+    </footer>
+
+    <!-- Pie Stitch · RIP READY (solo escritorio; espejo de la barra de estado) -->
+    <footer class="rip-footer" aria-hidden="true">
+      <span class="rf-ready"><span class="dot"></span>RIP READY</span>
+      <span class="sep"></span>
+      <span>RES: <b>300.0 DPI</b></span>
+      <span class="sep"></span>
+      <span>LIENZO: <b id="rfSize">—</b></span>
+      <span class="rf-right">
+        <span>PERFIL: <b class="green">CMYK + W1 (Underbase 85%)</b></span>
+        <span class="sep"></span>
+        <span>CHOKE: <b id="rfChoke">-1.5px</b></span>
+        <span class="sep"></span>
+        <span>MOTOR: <b class="orange">DTF RIP Core</b></span>
+      </span>
     </footer>
 
     <!-- Pro Studio · Modal Exportar PDF Multicapa (CMYK + White + CutContour) -->
@@ -2358,7 +3047,7 @@
       try{ history.pushState({ hdtf: 1 }, ''); }catch(e){}
       window.addEventListener('popstate', ()=>{
         try{ history.pushState({ hdtf: 1 }, ''); }catch(e){}
-        toast(hasImage ? 'Tu proyecto sigue aquí, no se perdió nada' : 'Sigues en Herramientas DTF');
+        toast(hasImage ? 'Tu proyecto sigue aquí, no se perdió nada' : 'Sigues en DTF Studio');
       });
       window.addEventListener('beforeunload', e => {
         if (hasImage){ e.preventDefault(); e.returnValue = ''; }
@@ -2557,6 +3246,7 @@
       else if (name === 'color'){
         $('#colB').value = 100; $('#colC').value = 100; $('#colS').value = 100;
         $('#colH').value = 0; $('#colM').value = 0;
+        $('#colBlack').value = 0; $('#colWhite').value = 0;
         colorPreviewLabelsOnly();
       }
       else if (name === 'autoia'){
@@ -4960,36 +5650,56 @@
     }
     /* Medios tonos: gamma que mueve SOLO la zona media de la imagen —
        el negro puro y el blanco puro no se mueven (con gamma, 0 y 255
-       quedan fijos) y sombras y luces extremas apenas cambian. */
+       quedan fijos) y sombras y luces extremas apenas cambian.
+       Oscuro y Luz (niveles): punto negro y punto blanco. Todo valor
+       igual o más oscuro que «Oscuro» cae a negro puro (0) y todo valor
+       igual o más claro que el punto de «Luz» sube a blanco puro (255);
+       lo de en medio solo se estira en línea recta entre ambos puntos,
+       sin la curva del contraste, por eso los medios tonos apenas se
+       mueven. Sirven para limpiar el diseño antes de imprimir: sombras
+       sucias a negro limpio y fondos grisáceos a blanco limpio. */
     function applyMidtonesGamma(){
-      const m = +$('#colM').value; if (!m) return;
-      const gamma = Math.pow(2, -m / 50);
+      const m = +$('#colM').value;
+      const bp = +$('#colBlack').value;          /* punto negro: 0–100 */
+      const wp = 255 - (+$('#colWhite').value);  /* punto blanco: 255–155 */
+      if (!m && !bp && wp === 255) return;
+      const gamma = m ? Math.pow(2, -m / 50) : 1;
+      const span = wp - bp;
       const lut = new Uint8ClampedArray(256);
-      for (let i = 0; i < 256; i++) lut[i] = Math.round(255 * Math.pow(i / 255, gamma));
+      for (let i = 0; i < 256; i++){
+        let t = (i - bp) / span;
+        if (t < 0) t = 0; else if (t > 1) t = 1;
+        lut[i] = Math.round(255 * Math.pow(t, gamma));
+      }
       const img = wx.getImageData(0, 0, work.width, work.height), d = img.data;
       for (let i = 0; i < d.length; i += 4){ d[i] = lut[d[i]]; d[i+1] = lut[d[i+1]]; d[i+2] = lut[d[i+2]]; }
       wx.putImageData(img, 0, 0);
+    }
+    function colorLevelsActive(){
+      return !!(+$('#colM').value || +$('#colBlack').value || +$('#colWhite').value);
     }
     function colorPreview(){
       if (!hasImage || !toolBase) return;
       colorPreviewActive = true;
       wx.save(); wx.filter = colorFilterStr(); wx.clearRect(0,0,work.width,work.height);
       wx.drawImage(toolBase, 0, 0); wx.restore();
-      if (+$('#colM').value) applyMidtonesGamma();
+      if (colorLevelsActive()) applyMidtonesGamma();
       $('#colBVal').textContent = $('#colB').value + '%';
       $('#colCVal').textContent = $('#colC').value + '%';
+      $('#colBlackVal').textContent = $('#colBlack').value;
+      $('#colWhiteVal').textContent = $('#colWhite').value;
       $('#colSVal').textContent = $('#colS').value + '%';
       $('#colHVal').textContent = $('#colH').value + '°';
       const mv = +$('#colM').value;
       $('#colMVal').textContent = (mv > 0 ? '+' : '') + mv;
     }
-    ['#colB','#colC','#colS','#colH','#colM'].forEach(id => $(id).addEventListener('input', colorPreview));
+    ['#colB','#colC','#colBlack','#colWhite','#colS','#colH','#colM'].forEach(id => $(id).addEventListener('input', colorPreview));
     $('#btnColorApply').addEventListener('click', ()=>{
       if (!requireImage()) return;
       pushUndoCanvas(toolBase);
       wx.save(); wx.filter = colorFilterStr(); wx.clearRect(0,0,work.width,work.height);
       wx.drawImage(toolBase, 0, 0); wx.restore();
-      if (+$('#colM').value) applyMidtonesGamma();
+      if (colorLevelsActive()) applyMidtonesGamma();
       toolBase = cloneCanvas(work);
       colorPreviewActive = false;
       ['#colB','#colC','#colS'].forEach(id => $(id).value = 100); $('#colH').value = 0; $('#colM').value = 0; colorPreviewLabelsOnly();
@@ -4999,6 +5709,11 @@
       $('#colBVal').textContent = '100%'; $('#colCVal').textContent = '100%';
       $('#colSVal').textContent = '100%'; $('#colHVal').textContent = '0°';
       $('#colMVal').textContent = '0';
+      /* Luz y Oscuro también vuelven a cero en cada reinicio de la
+         herramienta: aquí se fijan perilla y etiqueta juntas para que
+         ningún camino de reinicio las deje con el valor anterior. */
+      $('#colBlack').value = 0; $('#colWhite').value = 0;
+      $('#colBlackVal').textContent = '0'; $('#colWhiteVal').textContent = '0';
     }
     $$('[data-preset]').forEach(b => b.addEventListener('click', ()=>{
       if (!requireImage()) return;
@@ -5010,6 +5725,57 @@
       ['#colB','#colC','#colS'].forEach(id => $(id).value = 100); $('#colH').value = 0; $('#colM').value = 0; colorPreviewLabelsOnly();
       toast('Efecto aplicado');
     }));
+
+    /* ---------- BLANCO ↔ NEGRO: intercambio selectivo ----------
+       Distinto de «Invertir» (ese botón NO se toca: sigue siendo el
+       negativo completo con invert(1)). Aquí SOLO se intercambian el
+       blanco y el negro —incluidos los casi blancos y casi negros, con
+       tolerancia— y los demás colores quedan intactos: sirve para
+       pasar un diseño pensado para playera oscura a una clara y al
+       revés.
+       Cómo se decide, por píxel:
+       - Casi blanco: el canal más bajo pasa de 175 (nada) a 215 (todo).
+       - Casi negro: el canal más alto baja de 70 (nada) a 30 (todo).
+       - Solo píxeles casi neutros: si los canales distan más de ~70
+         entre sí es un color de verdad y no se toca; entre 25 y 70 la
+         fuerza baja poco a poco (los bordes suavizados no quedan con
+         un corte duro).
+       El destino es el gris neutro invertido según la luz del píxel
+       (255 − luminancia): el blanco puro cae a negro puro, el negro
+       puro sube a blanco puro y los grises casi extremos conservan su
+       matiz de sombra o de luz al invertirse. El alfa no se toca. */
+    $('#btnSwapBW').addEventListener('click', ()=>{
+      if (!requireImage()) return;
+      runBusy('Intercambiando blanco y negro…', ()=>{
+        pushUndoCanvas(toolBase);
+        const w = toolBase.width, h = toolBase.height;
+        const img = toolBase.getContext('2d').getImageData(0, 0, w, h), d = img.data;
+        for (let i = 0; i < d.length; i += 4){
+          if (!d[i + 3]) continue;
+          const r = d[i], g = d[i + 1], b = d[i + 2];
+          const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+          let t = 0;
+          if (mn > 175) t = (mn - 175) / 40;
+          else if (mx < 70) t = (70 - mx) / 40;
+          if (t <= 0) continue;
+          if (t > 1) t = 1;
+          let sw = (70 - (mx - mn)) / 45;
+          if (sw <= 0) continue;
+          if (sw > 1) sw = 1;
+          const weight = t * sw;
+          const target = 255 - (0.2126 * r + 0.7152 * g + 0.0722 * b);
+          d[i]     = r + (target - r) * weight;
+          d[i + 1] = g + (target - g) * weight;
+          d[i + 2] = b + (target - b) * weight;
+        }
+        wx.clearRect(0, 0, work.width, work.height);
+        wx.putImageData(img, 0, 0);
+        toolBase = cloneCanvas(work);
+        colorPreviewActive = false;
+        ['#colB','#colC','#colS'].forEach(id => $(id).value = 100); $('#colH').value = 0; $('#colM').value = 0; colorPreviewLabelsOnly();
+        toast('Blanco y negro intercambiados');
+      });
+    });
 
     /* ---------- VOLTEAR (modo espejo para sublimación) ---------- */
     function flipWork(horiz){
@@ -7271,6 +8037,135 @@
        saber qué se necesita sin reabrirlo. «Abrir» lo vuelve a poner
        en el Atelier tal cual se guardó. */
     const projects = [];
+    /* ---------- Persistencia en el teléfono (IndexedDB) ----------
+       Cada proyecto guardado se escribe en IndexedDB y se carga al
+       abrir la app: la galería ya no se borra al cerrar. El lienzo de
+       una capa de imagen no se puede guardar tal cual, así que viaja
+       como Blob PNG y al cargar vuelve a ser lienzo. Si IndexedDB no
+       está disponible (navegador viejo, modo privado estricto), la
+       galería sigue funcionando igual, solo durante la sesión. */
+    const IDB_DB = 'herramientas-dtf', IDB_STORE = 'projects';
+    let idbDbP = null;
+    function idbOpen(){
+      if (idbDbP) return idbDbP;
+      idbDbP = new Promise((resolve, reject) => {
+        if (!('indexedDB' in window)){ reject(new Error('sin-indexeddb')); return; }
+        let req;
+        try{ req = indexedDB.open(IDB_DB, 1); }catch(e){ reject(e); return; }
+        req.onupgradeneeded = () => { req.result.createObjectStore(IDB_STORE, { keyPath: 'id' }); };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      idbDbP.catch(()=>{ idbDbP = null; });
+      return idbDbP;
+    }
+    function idbRun(mode, fn){
+      return idbOpen().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, mode);
+        let req = null;
+        tx.oncomplete = () => resolve(req ? req.result : undefined);
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error('guardado interrumpido'));
+        try{ req = fn(tx.objectStore(IDB_STORE)); }catch(e){ reject(e); }
+      }));
+    }
+    function isQuotaErr(e){
+      return !!e && (e.name === 'QuotaExceededError' || e.code === 22 || /quota/i.test(String(e.name || e.message || '')));
+    }
+    function canvasToBlobP(cv){
+      return new Promise(res => {
+        if (!cv){ res(null); return; }
+        try{ cv.toBlob(b => res(b || null), 'image/png'); }
+        catch(e){ res(null); }
+      });
+    }
+    function blobToCanvasP(blob){
+      return new Promise(resolve => {
+        if (!blob){ resolve(null); return; }
+        const mk = src => {
+          const c = document.createElement('canvas');
+          c.width = src.width; c.height = src.height;
+          c.getContext('2d').drawImage(src, 0, 0);
+          return c;
+        };
+        const viaImg = () => {
+          const url = URL.createObjectURL(blob), img = new Image();
+          img.onload = () => { const c = mk(img); URL.revokeObjectURL(url); resolve(c); };
+          img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+          img.src = url;
+        };
+        if (window.createImageBitmap){
+          createImageBitmap(blob).then(bmp => { const c = mk(bmp); if (bmp.close) bmp.close(); resolve(c); }).catch(viaImg);
+        } else viaImg();
+      });
+    }
+    async function projectToRecord(p){
+      const rec = { id: p.id, name: p.name, dateTxt: p.dateTxt, savedAt: p.savedAt || 0,
+        color: p.color, printCm: p.printCm, mirror: p.mirror, modelLabel: p.modelLabel,
+        isShirt: p.isShirt, resources: p.resources, thumbs: p.thumbs, sides: {} };
+      for (const side of ['frente', 'espalda']){
+        const s = (p.sides && p.sides[side]) || { product: shirt.product, layers: [] };
+        const layers = [];
+        for (const L of (s.layers || [])){
+          const r = {};
+          Object.keys(L).forEach(k => { if (k !== 'canvas') r[k] = L[k]; });
+          if (L.type === 'img') r.blob = await canvasToBlobP(L.canvas);
+          layers.push(r);
+        }
+        rec.sides[side] = { product: s.product, layers };
+      }
+      return rec;
+    }
+    async function recordToProject(rec){
+      const noRes = { total: 0, imgs: 0, txts: 0, detail: [] };
+      const p = { id: rec.id, name: rec.name, dateTxt: rec.dateTxt, savedAt: rec.savedAt || 0,
+        color: rec.color, printCm: rec.printCm, mirror: rec.mirror, modelLabel: rec.modelLabel,
+        isShirt: rec.isShirt,
+        resources: rec.resources || { frente: noRes, espalda: noRes },
+        thumbs: rec.thumbs || {}, sides: {} };
+      for (const side of ['frente', 'espalda']){
+        const s = (rec.sides && rec.sides[side]) || { product: shirt.product, layers: [] };
+        const layers = [];
+        for (const r of (s.layers || [])){
+          const L = {};
+          Object.keys(r).forEach(k => { if (k !== 'blob') L[k] = r[k]; });
+          if (r.type === 'img'){
+            L.canvas = await blobToCanvasP(r.blob);
+            if (!L.canvas){ const c = document.createElement('canvas'); c.width = 2; c.height = 2; L.canvas = c; }
+          }
+          layers.push(L);
+        }
+        p.sides[side] = { product: s.product, layers };
+      }
+      return p;
+    }
+    /* 'ok' = quedó en el teléfono · 'quota' = sin espacio ·
+       'unavailable' = sin IndexedDB (queda solo en la sesión) ·
+       'error' = falló el guardado. */
+    async function persistProject(p){
+      try{ await idbOpen(); }catch(e){ return 'unavailable'; }
+      try{
+        const rec = await projectToRecord(p);
+        await idbRun('readwrite', store => store.put(rec));
+        return 'ok';
+      }catch(e){ return isQuotaErr(e) ? 'quota' : 'error'; }
+    }
+    async function forgetProject(id){
+      if (!id) return;
+      try{ await idbRun('readwrite', store => store.delete(id)); }catch(e){}
+    }
+    async function loadStoredProjects(){
+      let recs = null;
+      try{ recs = await idbRun('readonly', store => store.getAll()); }
+      catch(e){ return; } /* sin IndexedDB: galería solo de la sesión */
+      if (!recs || !recs.length) return;
+      recs.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+      for (const rec of recs){
+        if (!rec || !rec.id || projects.some(p => p.id === rec.id)) continue;
+        try{ projects.push(await recordToProject(rec)); }catch(e){}
+      }
+      renderProjects();
+    }
     function cloneShirtLayers(layers){
       return (layers || []).map(L => {
         const c = Object.assign({}, L);
@@ -7293,7 +8188,7 @@
     function sideThumb(side){
       const cv = renderSideCanvas(side);
       const t = document.createElement('canvas');
-      const s = Math.min(1, 240 / Math.max(cv.width, cv.height));
+      const s = Math.min(1, 320 / Math.max(cv.width, cv.height));
       t.width = Math.max(1, Math.round(cv.width * s)); t.height = Math.max(1, Math.round(cv.height * s));
       t.getContext('2d').drawImage(cv, 0, 0, t.width, t.height);
       return t.toDataURL('image/jpeg', 0.72);
@@ -7321,11 +8216,10 @@
       const empty = $('#projEmpty'); if (empty) empty.hidden = projects.length > 0;
       projects.forEach((p, idx) => {
         const card = document.createElement('div'); card.className = 'proj-card';
-        const head = document.createElement('div'); head.className = 'proj-head';
-        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = p.name;
-        const dt = document.createElement('span'); dt.className = 'dt'; dt.textContent = p.dateTxt;
-        head.appendChild(nm); head.appendChild(dt); card.appendChild(head);
+        /* La tarjeta abre por la vista previa: frente y espalda
+           grandes, como galería de fotos; tocarlas abre el proyecto. */
         const thumbs = document.createElement('div'); thumbs.className = 'proj-thumbs';
+        thumbs.title = 'Abrir proyecto';
         [['frente', 'Frente'], ['espalda', 'Espalda']].forEach(([side, lab]) => {
           const fig = document.createElement('figure');
           if (p.thumbs[side]){
@@ -7339,30 +8233,33 @@
           const cap = document.createElement('figcaption'); cap.textContent = lab;
           fig.appendChild(cap); thumbs.appendChild(fig);
         });
+        thumbs.addEventListener('click', ()=> openProject(idx));
         card.appendChild(thumbs);
-        const res = document.createElement('div'); res.className = 'proj-res';
+        const head = document.createElement('div'); head.className = 'proj-head';
+        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = p.name;
+        const dt = document.createElement('span'); dt.className = 'dt'; dt.textContent = p.dateTxt;
+        head.appendChild(nm); head.appendChild(dt); card.appendChild(head);
+        const meta = document.createElement('div'); meta.className = 'proj-meta';
         let html = '<span class="cdot" style="background:' + p.color + '"></span><b>' + p.color.toUpperCase() + '</b> · ' +
-          p.modelLabel + ' · impresión <b>' + p.printCm.toFixed(1) + ' cm</b> de ancho' + (p.mirror === 'espejo' ? ' · en espejo' : '');
+          p.modelLabel + ' · impresión <b>' + p.printCm.toFixed(1) + ' cm</b>' + (p.mirror === 'espejo' ? ' · espejo' : '');
         [['frente', 'Frente'], ['espalda', 'Espalda']].forEach(([side, lab]) => {
-          const r = p.resources[side];
-          html += '<br><b>' + lab + ':</b> ' + (r.total ? (r.total + ' capa(s) — ' + r.imgs + ' imagen(es), ' + r.txts + ' texto(s)') : 'sin diseño');
-          if (r.detail.length){
-            html += '<ul>' + r.detail.map(d => '<li></li>').join('') + '</ul>';
-          }
+          const r = p.resources[side] || { total: 0, imgs: 0, txts: 0 };
+          html += '<br><b>' + lab + ':</b> ' + (r.total ? (r.total + ' capa(s) · ' + r.imgs + ' img · ' + r.txts + ' txt') : 'sin diseño');
         });
-        res.innerHTML = html;
-        /* Los nombres de capa van como texto, nunca como HTML */
-        const lis = res.querySelectorAll('li');
-        const allDetail = p.resources.frente.detail.concat(p.resources.espalda.detail);
-        lis.forEach((li, li2) => { const d = allDetail[li2]; if (d) li.textContent = d.name + ' · ' + (d.type === 'img' ? 'imagen' : 'texto') + ' · ' + d.cm; });
-        card.appendChild(res);
+        meta.innerHTML = html;
+        card.appendChild(meta);
         const row = document.createElement('div'); row.className = 'btnrow';
         const bOpen = document.createElement('button'); bOpen.className = 'btn small primary'; bOpen.type = 'button'; bOpen.textContent = 'Abrir';
         bOpen.addEventListener('click', ()=> openProject(idx));
         const bDl = document.createElement('button'); bDl.className = 'btn small'; bDl.type = 'button'; bDl.textContent = 'Descargar vistas';
         bDl.addEventListener('click', ()=> downloadProjectViews(p));
         const bDel = document.createElement('button'); bDel.className = 'btn small'; bDel.type = 'button'; bDel.textContent = 'Eliminar';
-        bDel.addEventListener('click', ()=>{ projects.splice(idx, 1); renderProjects(); toast('Proyecto eliminado de la galería'); });
+        bDel.addEventListener('click', ()=>{
+          const gone = projects.splice(idx, 1)[0];
+          renderProjects();
+          forgetProject(gone && gone.id);
+          toast('Proyecto eliminado de la galería');
+        });
         row.appendChild(bOpen); row.appendChild(bDl); row.appendChild(bDel);
         card.appendChild(row);
         box.appendChild(card);
@@ -7390,7 +8287,7 @@
         resources.espalda = { total: 0, imgs: 0, txts: 0, detail: [] };
         renderShirt(false);
         const t = document.createElement('canvas');
-        const sc = Math.min(1, 240 / Math.max(shirtCv.width, shirtCv.height));
+        const sc = Math.min(1, 320 / Math.max(shirtCv.width, shirtCv.height));
         t.width = Math.round(shirtCv.width * sc); t.height = Math.round(shirtCv.height * sc);
         t.getContext('2d').drawImage(shirtCv, 0, 0, t.width, t.height);
         thumbs.frente = t.toDataURL('image/jpeg', 0.72);
@@ -7399,6 +8296,8 @@
       }
       const d = new Date();
       return {
+        id: 'p' + d.getTime().toString(36) + Math.floor(Math.random() * 1679616).toString(36),
+        savedAt: d.getTime(),
         name: name || ('Proyecto ' + (projects.length + 1) + ' · ' + PRODUCTS[shirt.product].label),
         dateTxt: d.toLocaleDateString('es-MX') + ' ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
         color: shirt.color, printCm: wCm, mirror: shirtMirror,
@@ -7414,9 +8313,16 @@
       }
       const name = ($('#projName').value || '').trim();
       showBusy('Guardando proyecto…');
-      setTimeout(()=>{
+      setTimeout(async ()=>{
         try{
-          projects.unshift(currentProjectData(name));
+          const p = currentProjectData(name);
+          /* Primero al teléfono y ya guardado entra a la galería: si
+             el espacio se llenó, se avisa y la galería queda como
+             estaba; sin IndexedDB queda solo durante la sesión. */
+          const r = await persistProject(p);
+          if (r === 'quota'){ toast('Sin espacio en el teléfono: el proyecto no se guardó'); hideBusy(); return; }
+          if (r === 'error'){ toast('No se pudo guardar el proyecto'); hideBusy(); return; }
+          projects.unshift(p);
           $('#projName').value = '';
           renderProjects();
           toast('Proyecto guardado en la galería: frente y espalda');
@@ -7466,6 +8372,9 @@
       }
       toast('Vistas del proyecto descargadas');
     }
+    /* Al abrir la app, la galería se rellena con los proyectos
+       guardados en el teléfono. */
+    loadStoredProjects();
     $('#btnDownloadBoth').addEventListener('click', async ()=>{
       if (!isShirtProduct(shirt.product)){ toast('Elige una playera para descargar frente y espalda'); return; }
       saveSideState();
@@ -7785,11 +8694,13 @@
 
       /* ---------- Lupa Macro (1200%): puntos de semitono ampliados del diseño real ---------- */
       var ripGeo = 'elipse';
+      var lupaMinimized = false;
       function drawLupa(){
-        var lupaEl = $('#lupaPanel'), lc = $('#lupaCv');
+        var lupaEl = $('#lupaPanel'), lc = $('#lupaCv'), miniEl = $('#lupaMiniBtn');
         if (!lupaEl || !lc) return;
-        if (!hasImg()){ lupaEl.hidden = true; return; }
-        lupaEl.hidden = false;
+        if (!hasImg()){ lupaEl.hidden = true; if (miniEl) miniEl.hidden = true; return; }
+        if (lupaMinimized){ lupaEl.hidden = true; if (miniEl) miniEl.hidden = false; return; }
+        lupaEl.hidden = false; if (miniEl) miniEl.hidden = true;
         var SW = 18, SH = 10, W = lc.width, H = lc.height;
         var sx = Math.max(0, Math.min(work.width - SW, Math.floor(work.width / 2 - SW / 2)));
         var sy = Math.max(0, Math.min(work.height - SH, Math.floor(work.height / 2 - SH / 2)));
@@ -7823,6 +8734,9 @@
         if (gl) gl.textContent = ripGeo === 'circulo' ? 'Roseta Circular' : (ripGeo === 'linea' ? 'Línea DTF Variable' : 'Roseta Elíptica');
       }
       setInterval(drawLupa, 1600);
+      var lupaMinBtn = $('#lupaMinBtn'), lupaMiniBtn = $('#lupaMiniBtn');
+      if (lupaMinBtn) lupaMinBtn.addEventListener('click', function(){ lupaMinimized = true; drawLupa(); });
+      if (lupaMiniBtn) lupaMiniBtn.addEventListener('click', function(){ lupaMinimized = false; drawLupa(); });
 
       /* ---------- Panel RIP: geometría, LPI, ángulo, ganancia, choke y curva ---------- */
       function ripSyncGeo(m){
@@ -8193,6 +9107,7 @@
         else { sbState.style.color = 'var(--muted)'; sbState.innerHTML = '○ Sin diseño cargado <span>| v4.8.2-PRO · RIP Edition</span>';
           var pill0 = $('#canvasPill'); if (pill0) pill0.hidden = true;
           var lupa0 = $('#lupaPanel'); if (lupa0) lupa0.hidden = true;
+          var lupaMini0 = $('#lupaMiniBtn'); if (lupaMini0) lupaMini0.hidden = true;
           var sbPf0 = $('#sbPreflight'); if (sbPf0){ sbPf0.textContent = '○ Preflight RIP —'; sbPf0.style.color = 'var(--muted)'; }
         }
       }
@@ -8259,6 +9174,17 @@
             if (h) h.click();
             return;
           }
+          var proj = e.target.closest('#mProjectsBtn');
+          if (proj){
+            closeMenu();
+            var tb = document.querySelector('#rail .tool-btn[data-tool="playera"]');
+            if (tb) tb.click();
+            setTimeout(function(){
+              var g = document.getElementById('projGallery');
+              if (g) g.scrollIntoView({ block: 'start' });
+            }, 80);
+            return;
+          }
           var item = e.target.closest('[data-proxy]');
           if (!item || item.disabled) return;
           var t = document.getElementById(item.getAttribute('data-proxy'));
@@ -8274,9 +9200,11 @@
          «Ajustes» la vuelve a abrir. El título es el de la herramienta.
          La hoja NO tapa el lienzo: abre a media altura, se arrastra
          desde su barra para darle la altura que se quiera y con el
-         botón ⌄ se achica a una franja (solo la barra con el nombre)
-         para ver el diseño completo mientras se ajusta; tocar la
-         franja o el ⌄ la vuelve a abrir. */
+         botón ⌄ se achica a una tira con el nombre y el slider
+         principal de la herramienta, para moverlo viendo el diseño
+         casi completo; tocar la tira, deslizarla o el ⌄ la vuelve a
+         abrir y revela el resto, y sigue pudiendo expandirse
+         arrastrando como siempre. */
       function syncSheetTitle(){
         var h2 = document.querySelector('.panel.active h2');
         var ttl = $('#sheetTitle');
@@ -8285,10 +9213,79 @@
       var panelCol = document.querySelector('.panel-col');
       var sheetBar = document.querySelector('.sheet-bar');
       var sheetToggle = $('#sheetToggle');
+      /* Tira minimizada con slider: al achicar la hoja, la tira refleja
+         el slider principal de la herramienta activa (el último que se
+         tocó en el panel, o el primero disponible). Mover el de la tira
+         mueve el control real y dispara su vista previa en vivo, así se
+         ajusta viendo el diseño casi a pantalla completa. Si la
+         herramienta no tiene sliders, la hoja se achica como antes
+         (solo la barra con el nombre). */
+      var stripRange = $('#ssRange'), stripLabel = $('#ssLabel'), stripVal = $('#ssVal');
+      var stripTarget = null, lastRange = null;
+      function stripFieldLabel(el){
+        var f = el.closest('.field'); if (!f) return '';
+        var lab = f.querySelector('label'); if (!lab) return '';
+        var c = lab.cloneNode(true);
+        var v = c.querySelector('.val'); if (v) v.remove();
+        return c.textContent.trim();
+      }
+      function stripShowVal(){
+        if (!stripTarget || !stripVal) return;
+        var f = stripTarget.closest('.field');
+        var v = f ? f.querySelector('label .val') : null;
+        stripVal.textContent = v ? v.textContent : stripTarget.value;
+      }
+      function pickStripTarget(){
+        var panel = document.querySelector('.panel.active');
+        if (!panel) return null;
+        if (lastRange && panel.contains(lastRange) && !lastRange.disabled) return lastRange;
+        var rs = panel.querySelectorAll('input[type="range"]');
+        for (var i = 0; i < rs.length; i++){
+          if (!rs[i].disabled && !rs[i].closest('[hidden]')) return rs[i];
+        }
+        return null;
+      }
+      function refreshStrip(){
+        if (!stripRange) return;
+        stripTarget = pickStripTarget();
+        if (!stripTarget){ document.body.classList.remove('has-strip'); return; }
+        document.body.classList.add('has-strip');
+        if (stripLabel) stripLabel.textContent = stripFieldLabel(stripTarget);
+        stripRange.min = stripTarget.min; stripRange.max = stripTarget.max;
+        stripRange.step = stripTarget.step; stripRange.value = stripTarget.value;
+        stripShowVal();
+      }
+      if (stripRange){
+        stripRange.addEventListener('input', function(){
+          if (!stripTarget) return;
+          stripTarget.value = stripRange.value;
+          stripTarget.dispatchEvent(new Event('input', { bubbles: true }));
+          stripShowVal();
+        });
+        stripRange.addEventListener('change', function(){
+          if (!stripTarget) return;
+          stripTarget.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      }
+      if (panelCol) panelCol.addEventListener('input', function(e){
+        var t = e.target;
+        if (!t || t === stripRange || t.type !== 'range') return;
+        var panel = document.querySelector('.panel.active');
+        if (panel && panel.contains(t)) lastRange = t;
+      });
+      /* Si cambia la herramienta con la hoja achicada, la tira refleja
+         el slider de la nueva herramienta. */
+      var stripObs = new MutationObserver(function(){
+        if (document.body.classList.contains('sheet-mini')) refreshStrip();
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('.panel'), function(p){
+        stripObs.observe(p, { attributes: true, attributeFilter: ['class'] });
+      });
       function sheetSetMini(on){
         document.body.classList.toggle('sheet-mini', on);
         if (sheetToggle) sheetToggle.setAttribute('aria-expanded', String(!on));
         if (on && panelCol){ panelCol.style.height = ''; panelCol.style.maxHeight = ''; }
+        if (on) refreshStrip(); else document.body.classList.remove('has-strip');
       }
       function sheetResetSize(){
         sheetSetMini(false);
@@ -8303,6 +9300,39 @@
         sheetResetSize();
         syncSheetTitle();
       });
+      /* Deslizar el riel con el dedo (solo celular): con la hoja
+         minimizada el gesto de lado a lado sobre el riel no lo movía
+         en el teléfono. Respaldo táctil: si el navegador toma el gesto
+         y desplaza el riel por su cuenta, llega pointercancel y este
+         respaldo se retira solo; si el navegador no lo toma, el
+         arrastre mueve el riel a mano para llegar a la herramienta
+         anterior o siguiente. Un arrastre de verdad no es un toque:
+         el clic que sigue se suprime para no cambiar de herramienta
+         sin querer al soltar el dedo. */
+      if (rail){
+        var railDrag = null, railDragAt = 0;
+        rail.addEventListener('pointerdown', function(e){
+          if (e.pointerType !== 'touch') return;
+          if (!window.matchMedia('(max-width: 820px)').matches) return;
+          railDrag = { x: e.clientX, sl: rail.scrollLeft, moved: false };
+        });
+        rail.addEventListener('pointermove', function(e){
+          if (!railDrag) return;
+          var dx = e.clientX - railDrag.x;
+          if (!railDrag.moved && Math.abs(dx) > 8) railDrag.moved = true;
+          if (railDrag.moved) rail.scrollLeft = railDrag.sl - dx;
+        });
+        rail.addEventListener('pointerup', function(){
+          if (railDrag && railDrag.moved) railDragAt = Date.now();
+          railDrag = null;
+        });
+        rail.addEventListener('pointercancel', function(){ railDrag = null; });
+        rail.addEventListener('click', function(e){
+          if (Date.now() - railDragAt < 400){
+            e.stopPropagation(); e.preventDefault(); railDragAt = 0;
+          }
+        }, true);
+      }
       var close = $('#sheetClose');
       if (close) close.addEventListener('click', function(){ document.body.classList.add('sheet-closed'); });
       var opt = $('#mOptionsBtn');
@@ -8313,30 +9343,45 @@
         syncSheetTitle();
       });
       /* Arrastrar la barra de la hoja cambia su altura en vivo; al
-         soltarla muy baja se queda achicada en franja. */
+         soltarla muy baja se queda achicada en tira con slider. Con la
+         hoja ya achicada, deslizar la barra (hacia arriba o hacia
+         abajo) revela el resto de la hoja y el arrastre sigue normal;
+         el toque simple sobre la tira también la reabre. */
       if (sheetBar && panelCol){
         var drag = null, lastDragEnd = 0;
         sheetBar.addEventListener('pointerdown', function(e){
           if (e.target.closest('button')) return;
-          if (document.body.classList.contains('sheet-mini')) return; /* el toque simple la reabre */
           if (!window.matchMedia('(max-width: 820px)').matches) return;
-          drag = { y: e.clientY, h: panelCol.getBoundingClientRect().height };
+          drag = { y: e.clientY, h: panelCol.getBoundingClientRect().height,
+                   mini: document.body.classList.contains('sheet-mini'), moved: 0 };
           document.body.classList.add('sheet-drag');
           panelCol.style.maxHeight = '88dvh'; /* el arrastre manda sobre el tope inicial */
           try{ sheetBar.setPointerCapture(e.pointerId); }catch(err){}
         });
         sheetBar.addEventListener('pointermove', function(e){
           if (!drag) return;
+          drag.moved = Math.max(drag.moved, Math.abs(e.clientY - drag.y));
+          if (drag.mini){
+            if (drag.moved > 28){
+              sheetSetMini(false);
+              var h0 = panelCol.getBoundingClientRect().height;
+              panelCol.style.height = h0 + 'px';
+              drag = { y: e.clientY, h: h0, mini: false, moved: drag.moved };
+            }
+            return;
+          }
           var nh = drag.h + (drag.y - e.clientY);
           nh = Math.max(56, Math.min(window.innerHeight * 0.88, nh));
           panelCol.style.height = nh + 'px';
         });
         var endDrag = function(){
           if (!drag) return;
+          var wasMini = drag.mini, moved = drag.moved;
           drag = null;
-          lastDragEnd = Date.now();
+          if (moved > 8) lastDragEnd = Date.now();
           document.body.classList.remove('sheet-drag');
-          if (panelCol.getBoundingClientRect().height <= 110) sheetSetMini(true);
+          if (wasMini){ panelCol.style.maxHeight = ''; return; } /* quedó en tira; el toque simple la reabre */
+          if (panelCol.getBoundingClientRect().height <= 130) sheetSetMini(true);
           else if (sheetToggle) sheetToggle.setAttribute('aria-expanded', 'true');
         };
         sheetBar.addEventListener('pointerup', endDrag);
@@ -8352,6 +9397,311 @@
         });
       }
       syncSheetTitle();
+    })();
+    </script>
+    <script>
+    'use strict';
+    /* ============ Cabecera Stitch · DTF PRO STUDIO RIP (capa de aspecto) ============
+       Los controles nuevos NO reimplementan nada: disparan los controles
+       reales de la app (subir, deshacer, zoom, sustrato, herramientas),
+       que siguen en el DOM. Rehacer sí es función nueva y honesta: se
+       alimenta del estado que el deshacer real va a quitar (capturado en
+       fase de captura, antes del manejador del motor) y cualquier edición
+       nueva — el motor siempre pasa por pushUndo() — vacía la pila. */
+    (function(){
+      function $(s){ return document.querySelector(s); }
+      function $$(s){ return Array.from(document.querySelectorAll(s)); }
+      function stitchToast(msg){
+        var t = $('#toast'); if (!t) return;
+        t.textContent = msg; t.classList.add('show');
+        setTimeout(function(){ t.classList.remove('show'); }, 2600);
+      }
+
+      /* ----- Abrir / Deshacer: espejo de los botones reales ----- */
+      var btnUndo = $('#btnUndo');
+      var openHdr = $('#btnOpenHdr');
+      if (openHdr) openHdr.addEventListener('click', function(){ var b = $('#btnUploadMain'); if (b) b.click(); });
+      var undoHdr = $('#btnUndoHdr');
+      function syncUndoHdr(){ if (undoHdr && btnUndo) undoHdr.disabled = btnUndo.disabled || btnUndo.hidden; }
+      if (undoHdr && btnUndo){
+        undoHdr.addEventListener('click', function(){ if (!btnUndo.disabled && !btnUndo.hidden) btnUndo.click(); });
+        new MutationObserver(syncUndoHdr).observe(btnUndo, { attributes: true, attributeFilter: ['disabled', 'hidden'] });
+        syncUndoHdr();
+      }
+
+      /* ----- Rehacer ----- */
+      var cvEl = $('#cv');
+      var redoHdr = $('#btnRedoHdr');
+      var redoStack = [];
+      function syncRedo(){ if (redoHdr) redoHdr.disabled = redoStack.length === 0; }
+      function cloneWork(){
+        var c = document.createElement('canvas');
+        c.width = cvEl.width; c.height = cvEl.height;
+        c.getContext('2d').drawImage(cvEl, 0, 0);
+        return c;
+      }
+      if (btnUndo && cvEl){
+        document.addEventListener('click', function(e){
+          if (!e.target || !e.target.closest || !e.target.closest('#btnUndo')) return;
+          if (typeof undoStack !== 'undefined' && undoStack.length && cvEl.width){
+            redoStack.push(cloneWork());
+            if (redoStack.length > 6) redoStack.shift();
+            syncRedo();
+          }
+        }, true);
+      }
+      if (typeof pushUndo === 'function' && typeof restoreFrom === 'function'){
+        var enginePushUndo = pushUndo;
+        pushUndo = function(){ enginePushUndo(); redoStack.length = 0; syncRedo(); };
+        if (redoHdr) redoHdr.addEventListener('click', function(){
+          if (!redoStack.length) return;
+          var c = redoStack.pop();
+          enginePushUndo();
+          restoreFrom(c);
+          syncRedo();
+          stitchToast('Rehecho');
+        });
+      }
+      var fileMainEl2 = $('#fileMain');
+      if (fileMainEl2) fileMainEl2.addEventListener('change', function(){ redoStack.length = 0; syncRedo(); });
+      syncRedo();
+
+      /* ----- Zoom de la cabecera: dispara el zoom real ----- */
+      function proxyClick(id){ var b = document.getElementById(id); if (b) b.click(); }
+      var zo = $('#btnZoomOutHdr'), zi = $('#btnZoomInHdr'), zf = $('#btnZoomFitHdr');
+      if (zo) zo.addEventListener('click', function(){ proxyClick('zoomOut'); });
+      if (zi) zi.addEventListener('click', function(){ proxyClick('zoomIn'); });
+      if (zf) zf.addEventListener('click', function(){ proxyClick('zoomFit'); });
+      var zoomValEl = $('#zoomVal'), hdrZoomVal = $('#hdrZoomVal');
+      if (zoomValEl && hdrZoomVal){
+        new MutationObserver(function(){ hdrZoomVal.textContent = zoomValEl.textContent; })
+          .observe(zoomValEl, { childList: true, characterData: true, subtree: true });
+      }
+
+      /* ----- Sustrato: cabecera y barra de documento espejan el control real ----- */
+      var subBtns = $$('#substrateSeg button');
+      var subMirrors = $$('[data-hsub]');
+      function realSub(v){ for (var i = 0; i < subBtns.length; i++) if (subBtns[i].dataset.sub === v) return subBtns[i]; return null; }
+      function syncSub(){
+        subMirrors.forEach(function(m){
+          var r = realSub(m.dataset.hsub);
+          m.classList.toggle('on', !!(r && r.classList.contains('on')));
+        });
+      }
+      subMirrors.forEach(function(m){
+        m.addEventListener('click', function(){ var r = realSub(m.dataset.hsub); if (r) r.click(); syncSub(); });
+      });
+      subBtns.forEach(function(b){ new MutationObserver(syncSub).observe(b, { attributes: true, attributeFilter: ['class'] }); });
+      syncSub();
+
+      /* ----- Pestañas del inspector: Tramas & RIP / Canales / Pliego ----- */
+      var inspState = 'tramas';
+      var inspTabs = $$('.insp-tab');
+      var pdfPanel = $('.panel[data-panel="pdf"]'), pliegoPanel = $('.panel[data-panel="pliego"]');
+      function railClick(name){
+        var b = document.querySelector('#rail .tool-btn[data-tool="' + name + '"]');
+        if (b) b.click();
+      }
+      function syncInsp(){
+        if (!pdfPanel || !pliegoPanel) return;
+        var plOn = pliegoPanel.classList.contains('active');
+        var pdfOn = pdfPanel.classList.contains('active');
+        if (pdfOn && inspState === 'pliego') inspState = 'tramas';
+        var act = plOn ? 'pliego' : (pdfOn ? inspState : null);
+        inspTabs.forEach(function(t){ t.classList.toggle('on', t.dataset.insp === act); });
+      }
+      inspTabs.forEach(function(t){
+        t.addEventListener('click', function(){
+          var k = t.dataset.insp;
+          if (k === 'pliego'){ inspState = 'pliego'; railClick('pliego'); }
+          else if (k === 'canales'){
+            inspState = 'canales';
+            if (pdfPanel && !pdfPanel.classList.contains('active')) railClick('pdf');
+            var anchor = $('#ripChannelsTitle');
+            if (anchor) setTimeout(function(){ anchor.scrollIntoView({ block: 'start' }); }, 60);
+          } else {
+            inspState = 'tramas';
+            if (pdfPanel && !pdfPanel.classList.contains('active')) railClick('pdf');
+            var pc = $('.panel-col'); if (pc) pc.scrollTop = 0;
+          }
+          syncInsp();
+        });
+      });
+      if (pdfPanel && pliegoPanel){
+        [pdfPanel, pliegoPanel].forEach(function(p){
+          new MutationObserver(syncInsp).observe(p, { attributes: true, attributeFilter: ['class'] });
+        });
+        syncInsp();
+      }
+
+      /* ----- Pie RIP READY: espejo de la barra de estado ----- */
+      function mirrorText(srcId, dstId){
+        var s = document.getElementById(srcId), d = document.getElementById(dstId);
+        if (!s || !d) return;
+        d.textContent = s.textContent;
+        new MutationObserver(function(){ d.textContent = s.textContent; })
+          .observe(s, { childList: true, characterData: true, subtree: true });
+      }
+      mirrorText('sbSize', 'rfSize');
+      mirrorText('sbChoke', 'rfChoke');
+
+      /* ----- Lupa Macro: ganancia de punto real del panel RIP ----- */
+      var ripGainEl = $('#ripGain'), lupaGain = $('#lupaGain');
+      if (ripGainEl && lupaGain){
+        var syncGain = function(){ lupaGain.textContent = ripGainEl.value + '%'; };
+        ripGainEl.addEventListener('input', syncGain);
+        ripGainEl.addEventListener('change', syncGain);
+        syncGain();
+      }
+    })();
+    </script>
+    <script>
+      /* Pantalla de carga DTF Studio: visible al abrir y se retira con un
+         fundido cuando la app terminó de cargar (mínimo ~1.4 s para que la
+         marca se aprecie, estilo la pantalla de Harmony). */
+      (function () {
+        var sp = document.getElementById('splash');
+        if (!sp) return;
+        var t0 = Date.now(), gone = false;
+        function hide() {
+          if (gone) return; gone = true;
+          var wait = Math.max(0, 1400 - (Date.now() - t0));
+          setTimeout(function () {
+            sp.classList.add('out');
+            setTimeout(function () { if (sp.parentNode) sp.parentNode.removeChild(sp); }, 700);
+          }, wait);
+        }
+        if (document.readyState === 'complete') hide();
+        else window.addEventListener('load', hide);
+        /* Red de seguridad: la app nunca queda tapada por la pantalla. */
+        setTimeout(hide, 4500);
+      })();
+    </script>
+    <script>
+    'use strict';
+    /* ============ Pantalla de inicio (SOLO celular) ============
+       Primera pantalla al abrir en el celular. Nada se reimplementa:
+       los proyectos recientes se leen de la misma lista `projects`
+       que llena la galería de Atelier (con sus vistas frente/espalda
+       guardadas), las herramientas disparan los botones reales del
+       riel y subir imagen dispara el botón real de subir. Sin
+       proyectos guardados se dice tal cual, sin ejemplos. */
+    (function(){
+      function $(s){ return document.querySelector(s); }
+      var home = $('#homeScreen'); if (!home) return;
+      var mq = window.matchMedia('(max-width: 820px)');
+
+      function railClick(name){
+        var b = document.querySelector('#rail .tool-btn[data-tool="' + name + '"]');
+        if (b) b.click();
+      }
+      function hideHome(){ document.body.classList.remove('home-on'); }
+      function showHome(){
+        if (!mq.matches) return;
+        renderHomeProjects();
+        document.body.classList.add('home-on');
+        home.scrollTop = 0;
+      }
+      function openTool(name){ hideHome(); railClick(name); }
+      function openUpload(){
+        var b = $('#btnUploadMain'); if (b) b.click();
+      }
+      function openGallery(){
+        openTool('playera');
+        setTimeout(function(){
+          var g = document.getElementById('projGallery');
+          if (g) g.scrollIntoView({ block: 'start' });
+        }, 120);
+      }
+      function openProjectFromHome(idx){
+        hideHome();
+        railClick('playera');
+        try{ if (typeof openProject === 'function') openProject(idx); }catch(e){}
+      }
+
+      /* ----- Proyectos recientes: los guardados de verdad ----- */
+      function renderHomeProjects(){
+        var strip = $('#homeProjects'); if (!strip) return;
+        strip.innerHTML = '';
+        var nb = document.createElement('button');
+        nb.type = 'button'; nb.className = 'hm-new';
+        nb.innerHTML = '<span class="hm-new-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><span>Nuevo<br/>proyecto</span>';
+        nb.addEventListener('click', function(){ openTool('playera'); });
+        strip.appendChild(nb);
+        var list = [];
+        try{ if (typeof projects !== 'undefined' && projects) list = projects; }catch(e){}
+        var empty = $('#homeProjEmpty'); if (empty) empty.hidden = list.length > 0;
+        list.slice(0, 10).forEach(function(p, idx){
+          var card = document.createElement('div'); card.className = 'hm-card';
+          card.setAttribute('role', 'button');
+          card.title = 'Abrir proyecto';
+          var th = document.createElement('div'); th.className = 'hm-thumbs';
+          [['frente', 'Frente'], ['espalda', 'Espalda']].forEach(function(pair){
+            var side = pair[0], fig = document.createElement('figure');
+            if (p.thumbs && p.thumbs[side]){
+              var im = document.createElement('img'); im.src = p.thumbs[side];
+              im.alt = 'Vista previa del ' + (side === 'frente' ? 'frente' : 'la espalda') + ' de ' + p.name;
+              fig.appendChild(im);
+            } else {
+              var no = document.createElement('div'); no.className = 'noimg'; no.textContent = 'Sin diseño';
+              fig.appendChild(no);
+            }
+            var cap = document.createElement('figcaption'); cap.textContent = pair[1];
+            fig.appendChild(cap); th.appendChild(fig);
+          });
+          card.appendChild(th);
+          var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = p.name;
+          var dt = document.createElement('span'); dt.className = 'dt'; dt.textContent = p.dateTxt || '';
+          card.appendChild(nm); card.appendChild(dt);
+          card.addEventListener('click', function(){ openProjectFromHome(idx); });
+          strip.appendChild(card);
+        });
+      }
+      /* La galería real se reconstruye al guardar, abrir o cargar los
+         proyectos del teléfono: la tira de inicio se refresca igual. */
+      var gal = $('#projGallery');
+      if (gal) new MutationObserver(renderHomeProjects).observe(gal, { childList: true });
+
+      /* ----- Herramientas y accesos: todo dispara lo real ----- */
+      home.addEventListener('click', function(e){
+        var t = e.target.closest('[data-home-tool]');
+        if (t){ openTool(t.getAttribute('data-home-tool')); return; }
+        var nav = e.target.closest('[data-home-nav]');
+        if (nav){
+          var k = nav.getAttribute('data-home-nav');
+          if (k === 'inicio'){ home.scrollTop = 0; }
+          else if (k === 'proyectos'){
+            var sec = $('#homeProjectsSec'); if (sec) sec.scrollIntoView({ block: 'start' });
+          }
+          else if (k === 'biblioteca'){ openGallery(); }
+          else if (k === 'ajustes'){ var o = $('#mOptionsBtn'); if (o) o.click(); }
+        }
+      });
+      var chipAll = $('#homeChipAll');
+      if (chipAll) chipAll.addEventListener('click', function(){ home.scrollTop = 0; });
+      var seeAll = $('#homeSeeAll');
+      if (seeAll) seeAll.addEventListener('click', openGallery);
+      var cta = $('#homeUpload');
+      if (cta) cta.addEventListener('click', openUpload);
+      var add = $('#homeAdd');
+      if (add) add.addEventListener('click', openUpload);
+      /* Al elegir la imagen (desde inicio o desde el editor) la
+         pantalla de inicio se retira y queda el editor con el diseño. */
+      var fm = $('#fileMain');
+      if (fm) fm.addEventListener('change', function(){ if (fm.files && fm.files.length) hideHome(); });
+
+      /* Volver a inicio desde el Menú del editor (solo celular). */
+      var homeBtn = $('#mHomeBtn');
+      if (homeBtn) homeBtn.addEventListener('click', function(){
+        var menu = $('#mMenu'); if (menu) menu.hidden = true;
+        var mb = $('#mMenuBtn'); if (mb) mb.setAttribute('aria-expanded', 'false');
+        showHome();
+      });
+
+      /* Al abrir la app en el celular, inicio es lo primero que se ve
+         (la pantalla de carga de la marca va encima y se retira sola). */
+      renderHomeProjects();
+      if (mq.matches) document.body.classList.add('home-on');
     })();
     </script>
   </body>

@@ -1,7 +1,7 @@
 /* Herramientas DTF — Service Worker
    Precarga la app para que abra sin internet. Al publicar una versión
    nueva, sube el número de CACHE_VERSION para que se refresque todo. */
-const CACHE_VERSION = 'hdtf-v44';
+const CACHE_VERSION = 'hdtf-v49';
 const CACHE_NAME = 'herramientas-dtf-' + CACHE_VERSION;
 
 const PRECACHE = [
@@ -15,10 +15,13 @@ const PRECACHE = [
   './assets/fonts/IBMPlexMono-400-latin-ext.woff2',
   './assets/fonts/IBMPlexMono-600-latin.woff2',
   './assets/fonts/IBMPlexMono-600-latin-ext.woff2',
+  './assets/fonts/ArchivoNarrow-700-latin.woff2',
+  './assets/fonts/ArchivoNarrow-700-latin-ext.woff2',
   './assets/imagetracer_v1.2.6.js',
   './assets/icon-192.png',
   './assets/icon-512.png',
   './assets/icon-maskable-512.png',
+  './assets/splash.webp',
   './assets/playera-foto-frente.png',
   './assets/playera-foto-espalda.png',
   './assets/taza-foto.png'
